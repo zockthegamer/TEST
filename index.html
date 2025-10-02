@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Diagrama Hombre-Máquina — Avanzado</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root{
     --bg:#f6f7f9; --card:#fff; --muted:#6c757d;
@@ -268,7 +269,8 @@ function getContrastingTextColor(hex){
 }
 
 /* ---------- tabla: generar y repoblar ---------- */
-function generarTabla(){
+// ✅ CORREGIDO: Acepta un parámetro para no guardar historial al cargar un estado.
+function generarTabla(isLoadingState = false){
   thead.innerHTML=''; tbody.innerHTML='';
   const minutos = parseInt(minutosInput.value)||0;
   if(minutos<=0) return;
@@ -282,7 +284,10 @@ function generarTabla(){
   }
   aplicarBordes();
   actualizarAnalisis();
-  saveHistory();
+  // Solo guardamos historial si no estamos cargando un estado
+  if (!isLoadingState) {
+    saveHistory();
+  }
 }
 
 /* ---------- UI acciones (lista) ---------- */
@@ -615,98 +620,34 @@ fileInput.onchange = e=>{
 }
 
 /* ---------- export PNG (Fiel a la vista) ---------- */
-btnExportPNG.onclick = async ()=>{
-  const cellW = 72; // min-width
-  const cellH = 24; // approx
-  const rows = Array.from(tbody.rows);
-  const cols = columnas.length + 1;
-  const svgW = cols * cellW;
-  const svgH = (rows.length + 1) * cellH;
-
-  let svgParts = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}">`,
-    `<defs>`,
-      `<pattern id="patt-dots" width="8" height="8" patternUnits="userSpaceOnUse">`,
-        `<circle cx="1" cy="1" r="1" fill="rgba(0,0,0,0.2)"></circle>`,
-      `</pattern>`,
-    `</defs>`,
-    // Fondo blanco
-    `<rect x="0" y="0" width="${svgW}" height="${svgH}" fill="#fff"/>`
-  ];
-
-  // Header
-  const trHead = thead.querySelector('tr');
-  Array.from(trHead.cells).forEach((th, i) => {
-    const x = i * cellW;
-    svgParts.push(`<rect x="${x}" y="0" width="${cellW}" height="${cellH}" fill="#f1f3f5" stroke="#dee2e6"/>`);
-    svgParts.push(`<text x="${x + cellW/2}" y="${cellH/2 + 5}" font-size="12" text-anchor="middle" fill="#000" font-family="Arial">${th.textContent}</text>`);
-  });
-
-  // Celdas de datos (fondo y patrones)
-  rows.forEach((tr, rIdx) => {
-    const y = (rIdx + 1) * cellH;
-    Array.from(tr.cells).forEach((td, cIdx) => {
-      const x = cIdx * cellW;
-      const bgColor = td.dataset.color || (td.classList.contains('celda-inactiva') ? '#fff' : '#fafafa');
-      svgParts.push(`<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" fill="${bgColor}" stroke="#dee2e6"/>`);
-      if (td.dataset.pattern === 'dots') {
-        svgParts.push(`<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" fill="url(#patt-dots)"/>`);
-      }
-    });
-  });
+// ✅ CORREGIDO: Reemplazado con html2canvas para una exportación WYSIWYG.
+btnExportPNG.onclick = () => {
+  const tablaParaExportar = document.getElementById('tabla-actividades');
   
-  // Bordes de bloques (superpuestos)
-  const bloques = {};
-  document.querySelectorAll('td[data-block-id]').forEach(td => {
-    const id = td.dataset.blockId;
-    if (!bloques[id]) bloques[id] = [];
-    bloques[id].push(td);
-  });
-
-  Object.values(bloques).forEach(celdas => {
-    celdas.sort((a,b) => a.parentElement.rowIndex - b.parentElement.rowIndex);
-    const firstCell = celdas[0];
-    const lastCell = celdas[celdas.length-1];
-    const x = firstCell.cellIndex * cellW;
-    const y_start = (Array.from(tbody.rows).indexOf(firstCell.parentElement) + 1) * cellH;
-    const y_end = (Array.from(tbody.rows).indexOf(lastCell.parentElement) + 2) * cellH;
-    const blockHeight = y_end - y_start;
-    svgParts.push(`<rect x="${x}" y="${y_start}" width="${cellW}" height="${blockHeight}" fill="transparent" stroke="black" stroke-width="2"/>`);
-  });
+  // Opcional: Animar al usuario de que algo está pasando
+  tablaParaExportar.style.outline = '2px solid var(--accent)';
   
-  // Texto (superpuesto para que esté al frente)
-  rows.forEach((tr, rIdx) => {
-    const y = (rIdx + 1) * cellH;
-    Array.from(tr.cells).forEach((td, cIdx) => {
-      const x = cIdx * cellW;
-      const textColor = getContrastingTextColor(td.dataset.color);
-      if (td.textContent) {
-        svgParts.push(`<text x="${x + cellW/2}" y="${y + cellH/2 + 5}" font-size="12" text-anchor="middle" fill="${textColor}" font-family="Arial" font-weight="${td.classList.contains('drag-handle') ? 'bold' : 'normal'}">${td.textContent}</text>`);
-      }
-    });
-  });
-
-  svgParts.push('</svg>');
-  const svgStr = svgParts.join('');
-  const svgBlob = new Blob([svgStr], {type:'image/svg+xml;charset=utf-8'});
-  const url = URL.createObjectURL(svgBlob);
-  const img = new Image();
-  img.onload = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = svgW;
-    canvas.height = svgH;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-    URL.revokeObjectURL(url);
+  html2canvas(tablaParaExportar, {
+    useCORS: true, // Necesario para imágenes externas si las hubiera
+    logging: false, // Para no mostrar mensajes en la consola
+    onclone: (document) => {
+      // Asegurarse de que el fondo de las celdas se vea bien en la captura
+      const tableClone = document.getElementById('tabla-actividades');
+      tableClone.style.transform = ''; // Resetear el zoom para la captura
+    }
+  }).then(canvas => {
+    // Crear el enlace de descarga
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/png');
-    a.download = 'diagrama.png';
+    a.download = 'diagrama-hombre-maquina.png';
     document.body.appendChild(a);
     a.click();
-    a.remove();
-  };
-  img.src = url;
-}
+    document.body.removeChild(a);
+    
+    // Quitar el borde de animación
+    tablaParaExportar.style.outline = 'none';
+  });
+};
 
 /* ---------- copy / paste / split ---------- */
 btnCopy.onclick = ()=>{
@@ -807,12 +748,16 @@ function getState(){
   return { columnas, acciones, minutos: parseInt(minutosInput.value)||0, tablaData };
 }
 
+// ✅ CORREGIDO: Llama a generarTabla(true) para no corromper el historial.
 function loadState(state, skipHistory=false){
   if(!state) return;
   columnas = state.columnas || ['Hombre'];
   acciones = state.acciones || acciones;
   minutosInput.value = state.minutos || minutosInput.value;
-  generarTabla(); // will clear tbody and create empty cells
+  
+  // Le pasamos 'true' para que no guarde el historial desde aquí
+  generarTabla(true); 
+
   if(state.tablaData){
     const rows = Array.from(tbody.rows);
     state.tablaData.forEach((filaData, rIdx)=>{
