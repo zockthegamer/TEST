@@ -175,11 +175,12 @@
 <input id="fileInput" type="file" accept=".json" style="display:none">
 
 <script>
-/* ESTADO Y VARIABLES GLOBALES */
+/* --------------------------
+  ESTADO Y VARIABLES GLOBALES
+---------------------------*/
 const tabla = document.getElementById('tabla-actividades');
 const thead = tabla.querySelector('thead');
 const tbody = tabla.querySelector('tbody');
-// ... (resto de selectores de elementos) ...
 const minutosInput = document.getElementById('minutos');
 const btnGenerar = document.getElementById('btnGenerar');
 const btnAgregarOperario = document.getElementById('btnAgregarOperario');
@@ -235,11 +236,15 @@ let dragState = null;
 let lastClickedBlockId = null;
 let lastSelectedCell = null;
 
-/* FUNCIONES AUXILIARES (HELPERS) */
+/* --------------------------
+  FUNCIONES AUXILIARES (HELPERS)
+---------------------------*/
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8) }
 function getContrastingTextColor(hex){ if(!hex) return 'white'; if(hex.startsWith('#')) hex = hex.slice(1); const r=parseInt(hex.substr(0,2),16), g=parseInt(hex.substr(2,2),16), b=parseInt(hex.substr(4,2),16); const yiq = (r*299 + g*587 + b*114)/1000; return yiq>=128 ? 'black' : 'white'; }
 
-/* GESTIÓN DEL HISTORIAL Y ESTADO */
+/* --------------------------
+  GESTIÓN DEL HISTORIAL Y ESTADO
+---------------------------*/
 function saveHistory(){ const snapshot = getState(); historyStack.push(JSON.stringify(snapshot)); if(historyStack.length>HISTORY_LIMIT) historyStack.shift(); redoStack = []; localStorage.setItem('autoSave', JSON.stringify(snapshot)); }
 function undo(){ if(historyStack.length<=1) return; const cur = historyStack.pop(); redoStack.push(cur); const prev = JSON.parse(historyStack[historyStack.length-1]); loadState(prev, true); }
 function redo(){ if(redoStack.length===0) return; const state = JSON.parse(redoStack.pop()); historyStack.push(JSON.stringify(state)); loadState(state, true); }
@@ -281,7 +286,9 @@ function loadState(state, skipHistory=false){
   if(!skipHistory) saveHistory();
 }
 
-/* LÓGICA DE LA TABLA Y BLOQUES */
+/* --------------------------
+  LÓGICA DE LA TABLA Y BLOQUES
+---------------------------*/
 function generarTabla(isLoadingState = false){
   thead.innerHTML=''; tbody.innerHTML='';
   const minutos = parseInt(minutosInput.value)||0;
@@ -338,7 +345,9 @@ function aplicarBordes(){
   });
 }
 
-/* LÓGICA DE ANÁLISIS */
+/* --------------------------
+  LÓGICA DE ANÁLISIS
+---------------------------*/
 function actualizarAnalisisGeneral(){
   analisisGeneralContainer.innerHTML = '';
   const minutos = parseInt(minutosInput.value)||0;
@@ -366,7 +375,6 @@ function actualizarAnalisisCiclo() {
 
     let tiempoTotal = 0;
     let costoTotal = 0;
-    const costosPorRecurso = {};
 
     bloquesCiclo.forEach(bid => {
         const celdas = document.querySelectorAll(`td[data-block-id="${bid}"]`);
@@ -387,7 +395,6 @@ function actualizarAnalisisCiclo() {
         if (columna.tipo === 'operario') {
             tarifaPorHora = costoHora.activa || 0;
         } else if (columna.tipo === 'maquina') {
-            // Asumimos que cualquier acción con 'espera' en el nombre es ociosa
             tarifaPorHora = accionNombre.includes('espera') ? (costoHora.ociosa || 0) : (costoHora.activa || 0);
         }
         
@@ -404,8 +411,33 @@ function actualizarAnalisisCiclo() {
     `;
 }
 
-/* MANEJO DE EVENTOS */
-// Eventos de Botones
+/* --------------------------
+  MANEJO DE EVENTOS
+---------------------------*/
+// UI General y Acciones
+function renderAcciones(){
+  accionesDiv.innerHTML='';
+  acciones.forEach((acc, idx)=>{
+    const wrapper = document.createElement('div');
+    wrapper.className = 'accion-wrapper';
+    const btn = document.createElement('button');
+    btn.className = 'btn-secondary';
+    btn.style.background = acc.color;
+    btn.style.border = '2px solid transparent';
+    btn.style.color = getContrastingTextColor(acc.color);
+    btn.textContent = `${acc.nombre} (${acc.duracion}m)`;
+    btn.onclick = ()=>{ accionActual = acc; Array.from(accionesDiv.querySelectorAll('.btn-secondary')).forEach(b=>b.style.borderColor='transparent'); btn.style.borderColor='#000' }
+    btn.ondblclick = ()=>{ const nuevo = prompt('Editar nombre acción (global):', acc.nombre); if(nuevo){ acc.nombre = nuevo; renderAcciones(); } }
+    const deleteBtn = document.createElement('div');
+    deleteBtn.className = 'btn-delete-action';
+    deleteBtn.textContent = '×';
+    deleteBtn.title = 'Borrar esta acción';
+    deleteBtn.onclick = (e) => { e.stopPropagation(); if (confirm(`¿Seguro que quieres borrar la acción "${acc.nombre}"?`)) { document.querySelectorAll(`td[data-accion="${acc.nombre}"]`).forEach(td => limpiarCelda(td)); acciones.splice(idx, 1); renderAcciones(); saveHistory(); } };
+    wrapper.appendChild(btn);
+    wrapper.appendChild(deleteBtn);
+    accionesDiv.appendChild(wrapper);
+  });
+}
 btnCrearAccion.onclick = ()=>{ const name = inputNombreAccion.value.trim(); if(!name) return; const dur = parseInt(inputDuracionAccion.value) || 1; const color = inputColorAccion.value || '#0d6efd'; acciones.push({nombre:name,duracion:dur,color}); renderAcciones(); inputNombreAccion.value=''; inputDuracionAccion.value='1'; saveHistory(); };
 function agregarColumna(tipo) {
     const totalDelTipo = columnas.filter(c => c.tipo === tipo).length;
@@ -420,7 +452,8 @@ btnDefinirCiclo.onclick = () => {
     modoSeleccionCiclo = !modoSeleccionCiclo;
     btnDefinirCiclo.textContent = modoSeleccionCiclo ? 'Finalizar Selección' : 'Definir Ciclo';
     btnDefinirCiclo.classList.toggle('btn-danger', modoSeleccionCiclo);
-    if (!modoSeleccionCiclo) { // Al finalizar
+    btnDefinirCiclo.classList.toggle('btn-success', !modoSeleccionCiclo);
+    if (!modoSeleccionCiclo) {
         actualizarAnalisisCiclo();
         saveHistory();
     }
@@ -430,7 +463,6 @@ btnDefinirCiclo.onclick = () => {
 tabla.addEventListener('click', (ev)=>{
   const td = ev.target;
   if(td.tagName !== 'TD' || td.cellIndex === 0) return;
-  
   const blockId = td.dataset.blockId;
 
   if (modoSeleccionCiclo && blockId) {
@@ -484,24 +516,23 @@ thead.addEventListener('click', (e) => {
     saveHistory();
   }
 });
-document.addEventListener('keydown', (e)=>{ const targetTagName = e.target.tagName.toLowerCase(); if (targetTagName === 'input') return; if(e.key==='Delete' || e.key === 'Backspace'){ if(lastClickedBlockId){ document.querySelectorAll(`td[data-block-id="${lastClickedBlockId}"]`).forEach(c=>limpiarCelda(c)); bloquesCiclo.delete(lastClickedBlockId); actualizarAnalisisCiclo(); saveHistory(); } }});
-// ... (resto de eventos como zoom, undo, redo, etc. simplificados para brevedad o se pueden pegar completos) ...
+tabla.addEventListener('mousemove', (e)=>{ const el = e.target; if(el.tagName==='TD' && el.dataset.accion){ tooltip.style.left = (e.pageX+12)+'px'; tooltip.style.top = (e.pageY+12)+'px'; tooltip.innerHTML = `<b>${el.dataset.accion}</b>`; tooltip.style.opacity = 1; } else { tooltip.style.opacity = 0; }});
+tabla.addEventListener('click', (e)=>{ const td = e.target; if(td.tagName==='TD'){ lastSelectedCell = td; lastClickedBlockId = td.dataset.blockId || null; }});
 
-// Eventos del Modal de Costos
+// Eventos de Modales
+function openModalForBlock(bid){ editingBlockId = bid; const cells = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`)); if(!cells.length) return; const midCell = cells[Math.floor(cells.length/2)]; modalNombre.value = midCell.dataset.accion || ''; modalColor.value = midCell.dataset.color || '#0d6efd'; modalDuracion.value = cells.length; modal.style.display = 'flex'; modalNombre.focus(); }
+modalCancelar.onclick = ()=>{ modal.style.display='none'; editingBlockId=null }
+modalGuardar.onclick = ()=>{ const nuevoNombre = modalNombre.value.trim(); if(!editingBlockId){ modal.style.display='none'; return; } const cells = Array.from(document.querySelectorAll(`td[data-block-id="${editingBlockId}"]`)); if(!cells.length){ modal.style.display='none'; editingBlockId=null; return; } const nuevaDuracion = parseInt(modalDuracion.value) || cells.length; const nuevoColor = modalColor.value; const startIndex = Array.from(tbody.rows).indexOf(cells[0].parentElement); const colIndex = cells[0].cellIndex; cells.forEach(c => limpiarCelda(c)); const actionName = nuevoNombre || 'Accion'; const actionObj = acciones.find(a=>a.nombre===actionName); let accObj; if(actionObj){ actionObj.color = nuevoColor; actionObj.duracion = nuevaDuracion; accObj = actionObj; } else { accObj = {nombre:actionName, duracion:nuevaDuracion, color:nuevoColor}; acciones.push(accObj); renderAcciones(); } pintarBloque(startIndex, colIndex, accObj); modal.style.display='none'; editingBlockId=null; };
+modalBorrar.onclick = ()=>{ if(!editingBlockId || !confirm('¿Borrar este bloque?')) return; document.querySelectorAll(`td[data-block-id="${editingBlockId}"]`).forEach(c => limpiarCelda(c)); bloquesCiclo.delete(editingBlockId); actualizarAnalisisCiclo(); modal.style.display='none'; editingBlockId=null; saveHistory(); }
+
 btnConfigurarCostos.onclick = () => {
     costosFormContainer.innerHTML = '';
-    const operarioGeneral = columnas.find(c => c.tipo === 'operario');
-    if (operarioGeneral) {
-        costosFormContainer.innerHTML += `<label class="small">Costo/hr Operarios (S/)</label><input type="number" data-col-id="operario_general" value="${costos.operario_general?.activa || ''}">`;
+    const tieneOperarios = columnas.some(c => c.tipo === 'operario');
+    if (tieneOperarios) {
+        costosFormContainer.innerHTML += `<label class="small">Costo/hr General de Operarios (S/)</label><input type="number" data-col-id="operario_general" value="${costos.operario_general?.activa || ''}">`;
     }
     columnas.filter(c => c.tipo === 'maquina').forEach(col => {
-        costosFormContainer.innerHTML += `
-            <div class="divider"></div>
-            <label class="small"><b>${col.nombre}</b> Costo/hr Activa (S/)</label>
-            <input type="number" data-col-id="${col.id}" data-costo-tipo="activa" value="${costos[col.id]?.activa || ''}">
-            <label class="small">${col.nombre} Costo/hr Ociosa (S/)</label>
-            <input type="number" data-col-id="${col.id}" data-costo-tipo="ociosa" value="${costos[col.id]?.ociosa || ''}">
-        `;
+        costosFormContainer.innerHTML += `<div class="divider"></div><label class="small"><b>${col.nombre}</b> Costo/hr Activa (S/)</label><input type="number" data-col-id="${col.id}" data-costo-tipo="activa" value="${costos[col.id]?.activa || ''}"><label class="small">${col.nombre} Costo/hr Ociosa (S/)</label><input type="number" data-col-id="${col.id}" data-costo-tipo="ociosa" value="${costos[col.id]?.ociosa || ''}">`;
     });
     modalCostos.style.display = 'flex';
 };
@@ -512,7 +543,6 @@ costosGuardar.onclick = () => {
         if (!costos[colId]) costos[colId] = {};
         costos[colId][costoTipo] = parseFloat(input.value) || 0;
     });
-    // Si hay un costo general de operario, aplicarlo a todos los operarios
     if (costos.operario_general) {
         columnas.filter(c => c.tipo === 'operario').forEach(op => {
             if (!costos[op.id]) costos[op.id] = {};
@@ -525,12 +555,30 @@ costosGuardar.onclick = () => {
 };
 costosCancelar.onclick = () => { modalCostos.style.display = 'none'; };
 
-/* INICIALIZACIÓN */
+// Eventos de Herramientas y Archivos
+btnUndo.onclick = ()=>undo();
+btnRedo.onclick = ()=>redo();
+btnCopy.onclick = ()=>{ if(lastClickedBlockId){ clipboardBlock = captureBlock(lastClickedBlockId); alert('Bloque copiado.'); } else alert('Haz click en un bloque para copiarlo.'); };
+btnPaste.onclick = ()=>{ if(!clipboardBlock) return alert('No hay nada en el portapapeles.'); const target = lastSelectedCell || tbody.rows[0].cells[1]; if(!target) return; const filaIndex = Array.from(tbody.rows).indexOf(target.parentElement); pintarBlockFromData(filaIndex, target.cellIndex, clipboardBlock); saveHistory(); };
+btnSplit.onclick = ()=>{ if(!lastClickedBlockId) return alert('Haz click en un bloque para dividirlo.'); const bid = lastClickedBlockId; const cells = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`)); if(cells.length<=1) return alert('El bloque es demasiado pequeño.'); const midIndex = Math.floor(cells.length/2); const first = cells.slice(0,midIndex); const second = cells.slice(midIndex); const id1 = uid(), id2 = uid(); first.forEach(c=>{ c.dataset.blockId = id1; }); second.forEach(c=>{ c.dataset.blockId = id2; }); aplicarBordes(); saveHistory(); }
+function captureBlock(bid){ const cells = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`)); if(!cells.length) return null; return { nombre: cells[0].dataset.accion, color: cells[0].dataset.color || cells[0].style.backgroundColor, duracion: cells.length }; }
+function pintarBlockFromData(startRow, colIndex, data){ const filas = Array.from(tbody.rows); const dur = data.duracion || 1; const blockId = uid(); for(let i=0;i<dur;i++){ const r = startRow + i; if(r>=filas.length) break; const td = filas[r].cells[colIndex]; td.className=''; td.style.background = data.color; td.style.color = getContrastingTextColor(data.color); td.dataset.accion = data.nombre; td.dataset.blockId = blockId; td.dataset.color = data.color; td.textContent = (i===Math.floor((dur-1)/2))?data.nombre:''; } aplicarBordes(); actualizarAnalisisGeneral(); }
+
+btnGuardar.onclick = ()=>{ const state = getState(); const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state,null,2)); const a = document.createElement('a'); a.href = dataStr; a.download = 'diagrama.json'; document.body.appendChild(a); a.click(); a.remove(); }
+btnCargar.onclick = ()=> fileInput.click();
+fileInput.onchange = e=>{ const f = e.target.files[0]; if(!f) return; const reader = new FileReader(); reader.onload = ()=> { try{ const state = JSON.parse(reader.result); loadState(state); saveHistory(); }catch(err){ alert('Error al cargar.'); } }; reader.readAsText(f); }
+btnExportPNG.onclick = () => { const tablaParaExportar = document.getElementById('tabla-actividades'); tablaParaExportar.style.outline = '2px solid var(--accent)'; html2canvas(tablaParaExportar, { useCORS: true, logging: false, onclone: (doc) => { doc.getElementById('tabla-actividades').style.transform = ''; } }).then(canvas => { const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = 'diagrama.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a); tablaParaExportar.style.outline = 'none'; }); };
+btnShare.onclick = () => { const state = getState(); const jsonString = JSON.stringify(state); const compressed = LZString.compressToEncodedURIComponent(jsonString); const url = location.origin + location.pathname + '#s=' + compressed; prompt('Copia este link corto y compártelo:', url); }
+
+btnRestore.onclick = ()=>{ const saved = localStorage.getItem('autoSave'); if(!saved) return alert('No hay datos guardados.'); try{ const state = JSON.parse(saved); loadState(state); saveHistory(); }catch(e){ alert('No se pudo restaurar.'); } };
+btnClear.onclick = ()=>{ if(confirm('¿Seguro que quieres borrar todo?')){ primerEncabezado = 'Minuto'; columnas=[]; acciones=[]; costos={}; bloquesCiclo.clear(); agregarColumna('operario'); generarTabla(); renderAcciones(); localStorage.removeItem('autoSave'); saveHistory(); } }
+zoomRange.oninput = ()=> { tabla.style.transform = `scale(${zoomRange.value/100})`; }
+document.addEventListener('keydown', (e)=>{ const targetTagName = e.target.tagName.toLowerCase(); if (targetTagName === 'input') return; if(e.ctrlKey && e.key==='z'){ e.preventDefault(); undo(); } if(e.ctrlKey && e.key==='y'){ e.preventDefault(); redo(); } if(e.ctrlKey && e.key==='c'){ e.preventDefault(); if(lastClickedBlockId) clipboardBlock = captureBlock(lastClickedBlockId); } if(e.ctrlKey && e.key==='v'){ e.preventDefault(); btnPaste.click(); } if(e.key==='Delete' || e.key === 'Backspace'){ if(lastClickedBlockId){ document.querySelectorAll(`td[data-block-id="${lastClickedBlockId}"]`).forEach(c=>limpiarCelda(c)); bloquesCiclo.delete(lastClickedBlockId); actualizarAnalisisCiclo(); saveHistory(); } }});
+
+/* --------------------------
+  INICIALIZACIÓN
+---------------------------*/
 function init() {
-  // Enlazar todos los eventos
-  btnGenerar.onclick = generarTabla;
-  // ... (aquí irían el resto de los btn.onclick que no son una sola función) ...
-  // Lógica de carga
   try {
     if (location.hash.startsWith('#s=')) { const compressed = location.hash.replace('#s=', ''); const jsonString = LZString.decompressFromEncodedURIComponent(compressed); const state = JSON.parse(jsonString); loadState(state); return;
     } else if (location.hash.startsWith('#state=')) { const json = decodeURIComponent(location.hash.replace('#state=', '')); const state = JSON.parse(json); loadState(state); return; }
@@ -540,24 +588,14 @@ function init() {
   if (saved) {
     try { const s = JSON.parse(saved); loadState(s, true); } catch (e) { generarTabla(); }
   } else {
-    // Estado inicial por defecto
     columnas.push({id: `col_${uid()}`, nombre: 'Operario 1', tipo: 'operario'});
-    acciones = [
-      { nombre: 'Trabajo', duracion: 5, color: '#0d6efd' },
-      { nombre: 'Espera', duracion: 3, color: '#ffc107' }
-    ];
+    acciones = [ { nombre: 'Trabajo', duracion: 5, color: '#0d6efd' }, { nombre: 'Espera', duracion: 3, color: '#ffc107' } ];
     renderAcciones();
     generarTabla();
   }
 }
 init();
-window.addEventListener('beforeunload', ()=>{ localStorage.setItem('autoSave', JSON.stringify(getState())); });
-
-// El resto de funciones (modales, copy/paste, etc.) se mantienen igual.
-// He omitido algunas para no hacer el código excesivamente largo, pero su lógica
-// no cambia respecto a la versión anterior. Se pueden pegar directamente.
-// ... pegar aquí el resto de funciones como openModalForBlock, modalGuardar, btnCopy, etc.
-// desde la versión anterior.
+window.addEventListener('beforeunload', ()=>{ if(historyStack.length > 0) localStorage.setItem('autoSave', JSON.stringify(getState())); });
 </script>
 </body>
 </html>
