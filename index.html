@@ -12,7 +12,7 @@
     --border:#dee2e6;
   }
   html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial; background:var(--bg); color:#222}
-  .app{max-width:1200px;margin:18px auto;padding:18px;background:var(--card);border-radius:10px;box-shadow:0 4px 22px rgba(0,0,0,0.06)}
+  .app{max-width:1600px;margin:18px auto;padding:18px;background:var(--card);border-radius:10px;box-shadow:0 4px 22px rgba(0,0,0,0.06)}
   h1{margin:0 0 12px}
   .row{display:flex;gap:12px;align-items:flex-start}
   .col{flex:1}
@@ -34,7 +34,7 @@
   /* tabla */
   .tabla-contenedor{overflow:auto;border:1px solid var(--border);border-radius:6px;margin-top:12px;position:relative}
   table{border-collapse:collapse;width:100%;transform-origin:top left}
-  thead th{position:sticky;top:0;background:#f1f3f5;padding:8px;border:1px solid var(--border)}
+  thead th{position:sticky;top:0;background:#f1f3f5;padding:8px;border:1px solid var(--border); cursor:pointer;}
   td,th{min-width:72px;padding:6px;text-align:center;border:1px solid var(--border)}
   tbody td:first-child{background:#fafafa;font-weight:600}
   .celda-inactiva{background-image:repeating-linear-gradient(45deg, rgba(220,53,69,0.06), rgba(220,53,69,0.06) 8px, transparent 8px, transparent 16px)}
@@ -130,7 +130,7 @@
     <div class="col">
       <div class="panel">
         <h3>Tabla</h3>
-        <div class="tabla-contenedor" id="tablaWrapper" style="height:480px;overflow:auto">
+        <div class="tabla-contenedor" id="tablaWrapper" style="height:70vh;overflow:auto">
           <table id="tabla-actividades">
             <thead></thead>
             <tbody></tbody>
@@ -210,6 +210,7 @@ const tooltip = document.getElementById('tooltip');
 const analisisContainer = document.getElementById('analisis-container');
 const chartCanvas = document.getElementById('chartCanvas');
 
+let primerEncabezado = 'Minuto';
 let columnas = ['Hombre']; // inicialmente
 let acciones = []; // lista de acciones definidas: {nombre,duracion,color}
 let accionActual = null;
@@ -249,7 +250,7 @@ function generarTabla(isLoadingState = false){
   const minutos = parseInt(minutosInput.value)||0;
   if(minutos<=0) return;
   const trHead = document.createElement('tr');
-  trHead.innerHTML = `<th>Minuto</th>` + columnas.map(c=>`<th>${c}</th>`).join('');
+  trHead.innerHTML = `<th>${primerEncabezado}</th>` + columnas.map(c=>`<th>${c}</th>`).join('');
   thead.appendChild(trHead);
   for(let i=1;i<=minutos;i++){
     const tr = document.createElement('tr');
@@ -461,6 +462,30 @@ document.addEventListener('mouseup',(e)=>{
   }
 });
 
+// ✅ NUEVO: Event listener para hacer los encabezados editables
+thead.addEventListener('click', (e) => {
+  const th = e.target;
+  if (th.tagName !== 'TH') return;
+
+  const nombreActual = th.textContent;
+  const nuevoNombre = prompt('Editar nombre de la columna:', nombreActual);
+
+  if (nuevoNombre && nuevoNombre.trim() !== '') {
+    const nombreRecortado = nuevoNombre.trim();
+    th.textContent = nombreRecortado;
+
+    if (th.cellIndex === 0) {
+      // Es la primera columna (ej. "Minuto")
+      primerEncabezado = nombreRecortado;
+    } else {
+      // Es una de las otras columnas (Hombre, M1, etc.)
+      columnas[th.cellIndex - 1] = nombreRecortado;
+      actualizarAnalisis();
+    }
+    saveHistory();
+  }
+});
+
 /* ---------- modal operations ---------- */
 let editingBlockId = null;
 function openModalForBlock(bid){
@@ -506,7 +531,6 @@ modalGuardar.onclick = ()=>{
   pintarBloque(startIndex, colIndex, accObj);
   modal.style.display='none';
   editingBlockId=null;
-  // saveHistory() ya es llamado por pintarBloque
 };
 modalBorrar.onclick = ()=>{
   if(!editingBlockId || !confirm('¿Borrar este bloque?')) return;
@@ -514,7 +538,7 @@ modalBorrar.onclick = ()=>{
   document.querySelectorAll(`td[data-block-id="${editingBlockId}"]`).forEach(c => limpiarCelda(c));
   modal.style.display='none';
   editingBlockId=null;
-  saveHistory(); // limpiarCelda no lo llama, asi que lo llamamos aqui
+  saveHistory();
 }
 
 /* ---------- crear acciones globales ---------- */
@@ -530,7 +554,6 @@ btnCrearAccion.onclick = ()=>{
 }
 
 /* ---------- agregar maquina ---------- */
-// ✅ CORREGIDO: Ahora no borra los datos existentes.
 btnAgregarMaquina.onclick = ()=>{
   const nombreNuevaMaquina = `M${columnas.length}`;
   columnas.push(nombreNuevaMaquina);
@@ -675,38 +698,41 @@ btnRestore.onclick = ()=>{
   if(!saved) return alert('No hay datos guardados para restaurar.');
   try{ const state = JSON.parse(saved); loadState(state); saveHistory(); }catch(e){ alert('No se pudo restaurar.'); }
 };
-btnClear.onclick = ()=>{ if(confirm('¿Seguro que quieres borrar todo el diagrama?')){ columnas=['Hombre']; acciones=[]; generarTabla(); renderAcciones(); localStorage.removeItem('autoSave'); saveHistory(); } }
+btnClear.onclick = ()=>{ if(confirm('¿Seguro que quieres borrar todo el diagrama?')){ primerEncabezado = 'Minuto'; columnas=['Hombre']; acciones=[]; generarTabla(); renderAcciones(); localStorage.removeItem('autoSave'); saveHistory(); } }
 
 /* ---------- state helpers ---------- */
 function getState(){
   const tablaData = Array.from(tbody.rows).map(tr=> Array.from(tr.cells).slice(1).map(td=>{
     return td.dataset.blockId ? {blockId: td.dataset.blockId, accion: td.dataset.accion, color: td.dataset.color} : null;
   }));
-  return { columnas, acciones, minutos: parseInt(minutosInput.value)||0, tablaData };
+  return { primerEncabezado, columnas, acciones, minutos: parseInt(minutosInput.value)||0, tablaData };
 }
 
 function loadState(state, skipHistory=false){
   if(!state) return;
+  primerEncabezado = state.primerEncabezado || 'Minuto';
   columnas = state.columnas || ['Hombre'];
-  acciones = state.acciones || acciones;
-  minutosInput.value = state.minutos || minutosInput.value;
+  acciones = state.acciones || [];
+  minutosInput.value = state.minutos || 60;
   
   generarTabla(true); 
 
   if(state.tablaData){
     const rows = Array.from(tbody.rows);
     state.tablaData.forEach((filaData, rIdx)=>{
-      filaData.forEach((cellData, cIdx)=>{
-        if(cellData && rows[rIdx] && rows[rIdx].cells[cIdx+1]){
-          const td = rows[rIdx].cells[cIdx+1];
-          td.className=''; 
-          td.style.background = cellData.color || '#fff'; 
-          td.style.color = getContrastingTextColor(cellData.color||'#fff');
-          td.dataset.accion = cellData.accion;
-          td.dataset.blockId = cellData.blockId || uid();
-          td.dataset.color = cellData.color || '';
-        }
-      });
+      if (filaData) {
+        filaData.forEach((cellData, cIdx)=>{
+          if(cellData && rows[rIdx] && rows[rIdx].cells[cIdx+1]){
+            const td = rows[rIdx].cells[cIdx+1];
+            td.className=''; 
+            td.style.background = cellData.color || '#fff'; 
+            td.style.color = getContrastingTextColor(cellData.color||'#fff');
+            td.dataset.accion = cellData.accion;
+            td.dataset.blockId = cellData.blockId || uid();
+            td.dataset.color = cellData.color || '';
+          }
+        });
+      }
     });
 
     const groups = {};
@@ -799,9 +825,15 @@ function stringToColor(str){
 }
 
 /* ---------- keyboard shortcuts ---------- */
+// ✅ CORREGIDO: El atajo de teclado no interfiere con los campos de texto
 let lastClickedBlockId = null;
 let lastSelectedCell = null;
 document.addEventListener('keydown', (e)=>{
+  const targetTagName = e.target.tagName.toLowerCase();
+  if (targetTagName === 'input' || targetTagName === 'select' || targetTagName === 'textarea') {
+    return;
+  }
+
   if(e.ctrlKey && e.key==='z'){ e.preventDefault(); undo(); }
   if(e.ctrlKey && e.key==='y'){ e.preventDefault(); redo(); }
   if(e.ctrlKey && e.key==='c'){ e.preventDefault(); if(lastClickedBlockId) clipboardBlock = captureBlock(lastClickedBlockId); }
