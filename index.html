@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Diagrama de Procesos Avanzado</title>
+<title>Diagrama de Procesos de Alta Precisión</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
 <style>
@@ -36,12 +36,11 @@
   .tabla-contenedor{overflow:auto;border:1px solid var(--border);border-radius:6px;margin-top:12px;position:relative}
   table{border-collapse:collapse;width:100%;transform-origin:top left}
   thead th{position:sticky;top:0;background:#f1f3f5;padding:8px;border:1px solid var(--border); cursor:pointer;}
-  td,th{min-width:72px;padding:6px;text-align:center;border:1px solid var(--border)}
-  tbody td:first-child{background:#fafafa;font-weight:600}
+  td,th{min-width:72px; padding: 2px 6px; height: 18px; text-align:center;border:1px solid var(--border); font-size: 12px;}
+  tbody td:first-child{background:#fafafa;font-weight:600; min-width: 50px;}
   tbody.modo-seleccion-ciclo td:first-child { cursor: pointer; background-color: #fffbe6 !important; }
   .fila-ciclo { background-color: rgba(25,135,84,0.07); }
-
-  .celda-inactiva{background-image:repeating-linear-gradient(45deg, rgba(220,53,69,0.06), rgba(220,53,69,0.06) 8px, transparent 8px, transparent 16px)}
+  .celda-inactiva{background-image:repeating-linear-gradient(45deg, rgba(220,53,69,0.04), rgba(220,53,69,0.04) 5px, transparent 5px, transparent 10px)}
 
   #tooltip{position:fixed;background:#222;color:#fff;padding:6px 8px;border-radius:6px;pointer-events:none;opacity:0;transition:opacity .12s;z-index:2000;font-size:13px}
   .modal{position:fixed;left:0;top:0;width:100%;height:100%;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:2000; overflow-y: auto;}
@@ -58,14 +57,14 @@
 <body>
 <div id="tooltip"></div>
 <div class="app">
-  <h1>Diagrama de Procesos Avanzado</h1>
+  <h1>Diagrama de Procesos de Alta Precisión</h1>
 
   <div class="row">
     <div class="col" style="flex-basis:320px;max-width:360px">
       <div class="panel">
         <h3>Controles Principales</h3>
         <div class="controls">
-          <label class="small">Minutos Totales: <input id="minutos" type="number" value="60" style="width:80px;margin-left:6px"></label>
+          <label class="small">Duración Gráfico (min): <input id="minutos" type="number" value="10" style="width:80px;margin-left:6px"></label>
           <button id="btnGenerar" class="btn-primary">Generar Tabla</button>
         </div>
         <div class="controls" style="margin-top:8px">
@@ -78,7 +77,7 @@
         <h4>Crear Acción</h4>
         <div class="controls">
           <input id="nombreAccion" placeholder="Nombre de la acción" />
-          <input id="duracionAccion" type="number" value="1" style="width:70px" min="1" />
+          <input id="duracionAccion" type="number" value="0.5" step="0.01" style="width:70px" min="0.01" placeholder="ej. 1.25"/>
         </div>
         <div style="display:flex;gap:8px;margin-top:8px">
           <input id="colorAccion" type="color" value="#0d6efd" />
@@ -103,7 +102,6 @@
           <button id="btnRedo" class="btn-secondary">↷ Rehacer</button>
           <button id="btnCopy" class="btn-secondary">Copiar</button>
           <button id="btnPaste" class="btn-secondary">Pegar</button>
-          <button id="btnSplit" class="btn-secondary">Dividir</button>
         </div>
 
         <div class="divider"></div>
@@ -153,7 +151,7 @@
   <div class="card">
     <h3>Editar bloque</h3>
     <input id="modalNombre" placeholder="Nombre" />
-    <input id="modalDuracion" type="number" min="1" placeholder="Duración (min)" />
+    <input id="modalDuracion" type="number" step="0.01" min="0.01" placeholder="Duración (min)" />
     <input id="modalColor" type="color" />
     <div style="display:flex;gap:8px;margin-top:8px">
       <button id="modalGuardar" class="btn-primary">Guardar</button>
@@ -178,6 +176,7 @@
 <input id="fileInput" type="file" accept=".json" style="display:none">
 
 <script>
+/* JS: El motor ahora funciona en SEGUNDOS */
 /* --------------------------
   ESTADO Y VARIABLES GLOBALES
 ---------------------------*/
@@ -195,23 +194,18 @@ const inputDuracionAccion = document.getElementById('duracionAccion');
 const inputColorAccion = document.getElementById('colorAccion');
 const btnConfigurarCostos = document.getElementById('btnConfigurarCostos');
 const btnDefinirCiclo = document.getElementById('btnDefinirCiclo');
-// ... el resto de los selectores de elementos
-const btnGuardar = document.getElementById('btnGuardar'); const btnCargar = document.getElementById('btnCargar'); const fileInput = document.getElementById('fileInput'); const btnExportPNG = document.getElementById('btnExportPNG'); const btnUndo = document.getElementById('btnUndo'); const btnRedo = document.getElementById('btnRedo'); const btnCopy = document.getElementById('btnCopy'); const btnPaste = document.getElementById('btnPaste'); const btnSplit = document.getElementById('btnSplit'); const zoomRange = document.getElementById('zoomRange'); const btnShare = document.getElementById('btnShare'); const btnRestore = document.getElementById('btnRestore'); const btnClear = document.getElementById('btnClear'); const modal = document.getElementById('modalEditar'); const modalNombre = document.getElementById('modalNombre'); const modalDuracion = document.getElementById('modalDuracion'); const modalColor = document.getElementById('modalColor'); const modalGuardar = document.getElementById('modalGuardar'); const modalCancelar = document.getElementById('modalCancelar'); const modalBorrar = document.getElementById('modalBorrar'); const modalCostos = document.getElementById('modalCostos'); const costosFormContainer = document.getElementById('costos-form-container'); const costosGuardar = document.getElementById('costosGuardar'); const costosCancelar = document.getElementById('costosCancelar'); const tooltip = document.getElementById('tooltip'); const analisisGeneralContainer = document.getElementById('analisis-general-container'); const analisisCicloContainer = document.getElementById('analisis-ciclo-container');
-
+const btnGuardar = document.getElementById('btnGuardar'); const btnCargar = document.getElementById('btnCargar'); const fileInput = document.getElementById('fileInput'); const btnExportPNG = document.getElementById('btnExportPNG'); const btnUndo = document.getElementById('btnUndo'); const btnRedo = document.getElementById('btnRedo'); const btnCopy = document.getElementById('btnCopy'); const btnPaste = document.getElementById('btnPaste'); const zoomRange = document.getElementById('zoomRange'); const btnShare = document.getElementById('btnShare'); const btnRestore = document.getElementById('btnRestore'); const btnClear = document.getElementById('btnClear'); const modal = document.getElementById('modalEditar'); const modalNombre = document.getElementById('modalNombre'); const modalDuracion = document.getElementById('modalDuracion'); const modalColor = document.getElementById('modalColor'); const modalGuardar = document.getElementById('modalGuardar'); const modalCancelar = document.getElementById('modalCancelar'); const modalBorrar = document.getElementById('modalBorrar'); const modalCostos = document.getElementById('modalCostos'); const costosFormContainer = document.getElementById('costos-form-container'); const costosGuardar = document.getElementById('costosGuardar'); const costosCancelar = document.getElementById('costosCancelar'); const tooltip = document.getElementById('tooltip'); const analisisGeneralContainer = document.getElementById('analisis-general-container'); const analisisCicloContainer = document.getElementById('analisis-ciclo-container');
 
 // Datos de la aplicación
-let primerEncabezado = 'Minuto';
-let columnas = []; // Array de objetos: {id, nombre, tipo: 'operario'|'maquina'}
+let primerEncabezado = 'Tiempo';
+let columnas = [];
 let acciones = []; 
-let costos = {}; // { col_id: { activa: 50, ociosa: 10 } }
+let costos = {};
 let accionActual = null;
-
-// JS: Nuevas variables para el rango del ciclo
 let modoSeleccionRangoCiclo = false;
 let cicloInicio = null;
 let cicloFin = null;
 let proximoClickDefine = 'inicio';
-
 let historyStack = [];
 let redoStack = [];
 const HISTORY_LIMIT = 60;
@@ -232,16 +226,16 @@ function getContrastingTextColor(hex){ if(!hex) return 'white'; if(hex.startsWit
 function saveHistory(){ const snapshot = getState(); historyStack.push(JSON.stringify(snapshot)); if(historyStack.length>HISTORY_LIMIT) historyStack.shift(); redoStack = []; localStorage.setItem('autoSave', JSON.stringify(snapshot)); }
 function undo(){ if(historyStack.length<=1) return; const cur = historyStack.pop(); redoStack.push(cur); const prev = JSON.parse(historyStack[historyStack.length-1]); loadState(prev, true); }
 function redo(){ if(redoStack.length===0) return; const state = JSON.parse(redoStack.pop()); historyStack.push(JSON.stringify(state)); loadState(state, true); }
-function getState(){ const tablaData = Array.from(tbody.rows).map(tr=> Array.from(tr.cells).slice(1).map(td=>{ return td.dataset.blockId ? {blockId: td.dataset.blockId, accion: td.dataset.accion, color: td.dataset.color} : null; })); return { primerEncabezado, columnas, acciones, costos, cicloInicio, cicloFin, minutos: parseInt(minutosInput.value)||0, tablaData }; }
+function getState(){ const tablaData = Array.from(tbody.rows).map(tr=> Array.from(tr.cells).slice(1).map(td=>{ return td.dataset.blockId ? {blockId: td.dataset.blockId, accion: td.dataset.accion, color: td.dataset.color} : null; })); return { primerEncabezado, columnas, acciones, costos, cicloInicio, cicloFin, minutos: parseFloat(minutosInput.value)||0, tablaData }; }
 function loadState(state, skipHistory=false){
   if(!state) return;
-  primerEncabezado = state.primerEncabezado || 'Minuto';
+  primerEncabezado = state.primerEncabezado || 'Tiempo';
   columnas = state.columnas || [{id: `col_${uid()}`, nombre: 'Operario 1', tipo: 'operario'}];
   acciones = state.acciones || [];
   costos = state.costos || {};
   cicloInicio = state.cicloInicio || null;
   cicloFin = state.cicloFin || null;
-  minutosInput.value = state.minutos || 60;
+  minutosInput.value = state.minutos || 10;
   
   generarTabla(true); 
 
@@ -274,30 +268,49 @@ function loadState(state, skipHistory=false){
 ---------------------------*/
 function generarTabla(isLoadingState = false){
   thead.innerHTML=''; tbody.innerHTML='';
-  const minutos = parseInt(minutosInput.value)||0;
-  if(minutos<=0) return;
+  const totalMinutos = parseFloat(minutosInput.value) || 0;
+  const totalSegundos = Math.round(totalMinutos * 60);
+  if(totalSegundos <= 0) return;
+
   const trHead = document.createElement('tr');
   trHead.innerHTML = `<th>${primerEncabezado}</th>` + columnas.map(c=>`<th>${c.nombre}</th>`).join('');
   thead.appendChild(trHead);
-  for(let i=1;i<=minutos;i++){ const tr = document.createElement('tr'); tr.innerHTML = `<td>${i}</td>` + columnas.map(()=>`<td class="celda-inactiva"></td>`).join(''); tbody.appendChild(tr); }
+
+  for(let i = 0; i < totalSegundos; i++){
+      const tr = document.createElement('tr');
+      let label = '&nbsp;';
+      if (i % 60 === 0) {
+          label = `<b>${i/60} min</b>`;
+      } else if (i % 15 === 0) {
+          label = `:${i % 60}s`;
+      }
+      tr.innerHTML = `<td>${label}</td>` + columnas.map(()=>`<td class="celda-inactiva"></td>`).join('');
+      tbody.appendChild(tr);
+  }
   aplicarBordes();
   actualizarAnalisisGeneral();
-  actualizarAnalisisCiclo(); // Para redibujar el resaltado
+  actualizarAnalisisCiclo();
   if (!isLoadingState) { saveHistory(); }
 }
+
 function pintarBloque(startRowIndex, colIndex, acc){
   const filas = Array.from(tbody.rows);
-  const dur = acc.duracion || 1;
-  const middle = Math.floor((dur-1)/2);
+  const duracionEnSegundos = Math.round(acc.duracion * 60);
+  const middle = Math.floor((duracionEnSegundos-1)/2);
   const blockId = uid();
-  for(let i=0;i<dur;i++){
+  for(let i=0;i<duracionEnSegundos;i++){
     const r = startRowIndex + i;
     if(r>=filas.length) break;
     const td = filas[r].cells[colIndex];
     td.className = ''; td.style.background = acc.color; td.style.color = getContrastingTextColor(acc.color);
     td.dataset.accion = acc.nombre; td.dataset.blockId = blockId; td.dataset.color = acc.color;
-    td.textContent = (i===middle) ? acc.nombre : '';
-    if(i===middle) td.classList.add('drag-handle');
+    // Poner el nombre solo si el bloque es suficientemente grande
+    if (duracionEnSegundos >= 5 && i === middle) {
+        td.textContent = acc.nombre;
+        td.classList.add('drag-handle');
+    } else {
+        td.textContent = '';
+    }
   }
   aplicarBordes();
   actualizarAnalisisGeneral();
@@ -334,26 +347,24 @@ function aplicarBordes(){
 ---------------------------*/
 function actualizarAnalisisGeneral(){
   analisisGeneralContainer.innerHTML = '';
-  const minutos = parseInt(minutosInput.value)||0;
-  if (minutos === 0) return;
+  const totalSegundos = Math.round((parseFloat(minutosInput.value) || 0) * 60);
+  if (totalSegundos === 0) return;
   
   columnas.forEach((col, idxCol)=>{
-    let used = 0;
+    let usedSeconds = 0;
     if(tbody.rows.length > 0 && tbody.rows[0].cells.length > idxCol + 1) {
       for(let r=0;r<tbody.rows.length;r++){
         const td = tbody.rows[r].cells[idxCol+1];
-        if(td && td.dataset.blockId) used++;
+        if(td && td.dataset.blockId) usedSeconds++;
       }
     }
     const p = document.createElement('p');
     p.style.margin = '4px 0';
-    p.innerHTML = `<b>${col.nombre}:</b> ${((used/minutos)*100 || 0).toFixed(1)}% activo (${used} min) — ocioso ${minutos - used} min`;
+    p.innerHTML = `<b>${col.nombre}:</b> ${((usedSeconds/totalSegundos)*100 || 0).toFixed(1)}% activo (${(usedSeconds/60).toFixed(2)} min) — ocioso ${((totalSegundos - usedSeconds)/60).toFixed(2)} min`;
     analisisGeneralContainer.appendChild(p);
   });
 }
-// JS: Función de ANÁLISIS DE CICLO COMPLETAMENTE REESCRITA
 function actualizarAnalisisCiclo() {
-    // Primero, limpiar cualquier resaltado anterior
     tbody.querySelectorAll('.fila-ciclo').forEach(row => row.classList.remove('fila-ciclo'));
 
     if (cicloInicio === null || cicloFin === null) {
@@ -361,126 +372,88 @@ function actualizarAnalisisCiclo() {
         return;
     }
 
-    // Resaltar las filas del ciclo actual
-    for (let i = cicloInicio; i <= cicloFin; i++) {
-        if (tbody.rows[i]) {
-            tbody.rows[i].classList.add('fila-ciclo');
-        }
-    }
+    for (let i = cicloInicio; i <= cicloFin; i++) { if (tbody.rows[i]) tbody.rows[i].classList.add('fila-ciclo'); }
 
     let costoTotal = 0;
-    const tiempoDeCiclo = (cicloFin - cicloInicio + 1);
+    const tiempoDeCicloEnSegundos = (cicloFin - cicloInicio + 1);
 
-    // Iterar por cada minuto del ciclo
     for (let i = cicloInicio; i <= cicloFin; i++) {
         if (!tbody.rows[i]) continue;
-        
-        // Iterar por cada columna (recurso)
         for (let j = 0; j < columnas.length; j++) {
             const cell = tbody.rows[i].cells[j + 1];
             const columna = columnas[j];
             const costoHora = costos[columna.id] || {};
-
-            let tarifaPorHora = 0;
             const esOperario = columna.tipo === 'operario';
             const tarifaActiva = esOperario ? (costos.operario_general?.activa || 0) : (costoHora.activa || 0);
-            const tarifaOciosa = esOperario ? tarifaActiva : (costoHora.ociosa || 0); // Operario ocioso cuesta lo mismo que activo
-
-            if (cell && cell.dataset.blockId) { // Hay una actividad en la celda
-                const esEspera = cell.dataset.accion.toLowerCase().includes('espera');
-                tarifaPorHora = esEspera ? tarifaOciosa : tarifaActiva;
-            } else { // No hay actividad, es tiempo ocioso
+            const tarifaOciosa = esOperario ? tarifaActiva : (costoHora.ociosa || 0);
+            
+            let tarifaPorHora = 0;
+            if (cell && cell.dataset.blockId) {
+                tarifaPorHora = cell.dataset.accion.toLowerCase().includes('espera') ? tarifaOciosa : tarifaActiva;
+            } else {
                 tarifaPorHora = tarifaOciosa;
             }
-            costoTotal += tarifaPorHora / 60; // Costo de 1 minuto
+            costoTotal += tarifaPorHora / 3600;
         }
     }
 
-    const produccionPorHora = tiempoDeCiclo > 0 ? (60 / tiempoDeCiclo).toFixed(2) : 0;
+    const produccionPorHora = tiempoDeCicloEnSegundos > 0 ? (3600 / tiempoDeCicloEnSegundos).toFixed(2) : 0;
     
     analisisCicloContainer.innerHTML = `
-        <p style="margin:4px 0;"><b>Tiempo de Ciclo:</b> ${tiempoDeCiclo} min por unidad</p>
+        <p style="margin:4px 0;"><b>Tiempo de Ciclo:</b> ${(tiempoDeCicloEnSegundos / 60).toFixed(2)} min por unidad</p>
         <p style="margin:4px 0;"><b>Producción Estimada:</b> ${produccionPorHora} unidades por hora</p>
         <p style="margin:4px 0;"><b>Costo Total por Unidad:</b> S/ ${costoTotal.toFixed(2)}</p>
     `;
 }
 
-
 /* --------------------------
-  MANEJO DE EVENTOS
+  MANEJO DE EVENTOS Y UI
 ---------------------------*/
-// UI General y Acciones
 function renderAcciones(){
   accionesDiv.innerHTML='';
   acciones.forEach((acc, idx)=>{
     const wrapper = document.createElement('div'); wrapper.className = 'accion-wrapper';
     const btn = document.createElement('button'); btn.className = 'btn-secondary'; btn.style.background = acc.color; btn.style.border = '2px solid transparent'; btn.style.color = getContrastingTextColor(acc.color); btn.textContent = `${acc.nombre} (${acc.duracion}m)`; btn.onclick = ()=>{ accionActual = acc; Array.from(accionesDiv.querySelectorAll('.btn-secondary')).forEach(b=>b.style.borderColor='transparent'); btn.style.borderColor='#000' }; btn.ondblclick = ()=>{ const nuevo = prompt('Editar nombre acción (global):', acc.nombre); if(nuevo){ acc.nombre = nuevo; renderAcciones(); } };
-    const deleteBtn = document.createElement('div'); deleteBtn.className = 'btn-delete-action'; deleteBtn.textContent = '×'; deleteBtn.title = 'Borrar esta acción'; deleteBtn.onclick = (e) => { e.stopPropagation(); if (confirm(`¿Seguro que quieres borrar la acción "${acc.nombre}"?`)) { document.querySelectorAll(`td[data-accion="${acc.nombre}"]`).forEach(td => limpiarCelda(td)); acciones.splice(idx, 1); renderAcciones(); saveHistory(); } };
+    const deleteBtn = document.createElement('div'); deleteBtn.className = 'btn-delete-action'; deleteBtn.textContent = '×'; deleteBtn.title = 'Borrar esta acción'; deleteBtn.onclick = (e) => { e.stopPropagation(); if (confirm(`¿Borrar acción "${acc.nombre}"?`)) { document.querySelectorAll(`td[data-accion="${acc.nombre}"]`).forEach(td => limpiarCelda(td)); acciones.splice(idx, 1); renderAcciones(); saveHistory(); } };
     wrapper.appendChild(btn); wrapper.appendChild(deleteBtn); accionesDiv.appendChild(wrapper);
   });
 }
-btnCrearAccion.onclick = ()=>{ const name = inputNombreAccion.value.trim(); if(!name) return; const dur = parseInt(inputDuracionAccion.value) || 1; const color = inputColorAccion.value || '#0d6efd'; acciones.push({nombre:name,duracion:dur,color}); renderAcciones(); inputNombreAccion.value=''; inputDuracionAccion.value='1'; saveHistory(); };
-function agregarColumna(tipo) {
-    const totalDelTipo = columnas.filter(c => c.tipo === tipo).length;
-    const nombre = tipo === 'operario' ? `Operario ${totalDelTipo + 1}` : `Máquina ${totalDelTipo + 1}`;
-    const nuevaCol = { id: `col_${uid()}`, nombre, tipo };
-    columnas.push(nuevaCol);
-    generarTabla();
-}
+btnCrearAccion.onclick = ()=>{ const name = inputNombreAccion.value.trim(); if(!name) return; const dur = parseFloat(inputDuracionAccion.value) || 1; const color = inputColorAccion.value || '#0d6efd'; acciones.push({nombre:name,duracion:dur,color}); renderAcciones(); inputNombreAccion.value=''; inputDuracionAccion.value='0.5'; saveHistory(); };
+function agregarColumna(tipo) { const totalDelTipo = columnas.filter(c => c.tipo === tipo).length; const nombre = tipo === 'operario' ? `Operario ${totalDelTipo + 1}` : `Máquina ${totalDelTipo + 1}`; const nuevaCol = { id: `col_${uid()}`, nombre, tipo }; columnas.push(nuevaCol); generarTabla(); }
 btnAgregarOperario.onclick = () => agregarColumna('operario');
 btnAgregarMaquina.onclick = () => agregarColumna('maquina');
-
-// JS: Lógica MODIFICADA para la selección de ciclo por filas
 btnDefinirCiclo.onclick = () => {
     modoSeleccionRangoCiclo = !modoSeleccionRangoCiclo;
     tbody.classList.toggle('modo-seleccion-ciclo', modoSeleccionRangoCiclo);
     if (modoSeleccionRangoCiclo) {
-        btnDefinirCiclo.textContent = 'Cancelando Selección...';
-        btnDefinirCiclo.classList.replace('btn-warning', 'btn-danger');
-        proximoClickDefine = 'inicio';
-        cicloInicio = null;
-        cicloFin = null;
-        actualizarAnalisisCiclo(); // Limpia el análisis y resaltado
+        btnDefinirCiclo.textContent = 'Cancelando Selección...'; btnDefinirCiclo.classList.replace('btn-warning', 'btn-danger');
+        proximoClickDefine = 'inicio'; cicloInicio = null; cicloFin = null;
+        actualizarAnalisisCiclo();
     } else {
-        btnDefinirCiclo.textContent = 'Definir Rango de Ciclo';
-        btnDefinirCiclo.classList.replace('btn-danger', 'btn-warning');
+        btnDefinirCiclo.textContent = 'Definir Rango de Ciclo'; btnDefinirCiclo.classList.replace('btn-danger', 'btn-warning');
     }
 };
 
-// Eventos de la Tabla
 tabla.addEventListener('click', (ev)=>{
   const td = ev.target;
   if(td.tagName !== 'TD') return;
-
-  // Lógica de selección de rango de ciclo
   if (modoSeleccionRangoCiclo && td.cellIndex === 0) {
       const rowIndex = Array.from(tbody.rows).indexOf(td.parentElement);
       if (proximoClickDefine === 'inicio') {
-          cicloInicio = rowIndex;
-          cicloFin = null;
-          proximoClickDefine = 'fin';
-          analisisCicloContainer.innerHTML = `Fila de inicio: ${cicloInicio + 1}. Selecciona la fila de fin.`;
-          actualizarAnalisisCiclo(); // Para resaltar la primera fila
-          tbody.rows[rowIndex].classList.add('fila-ciclo');
-
-      } else { // proximoClickDefine === 'fin'
+          cicloInicio = rowIndex; cicloFin = null; proximoClickDefine = 'fin';
+          analisisCicloContainer.innerHTML = `Fila de inicio: ${((cicloInicio)/60).toFixed(2)} min. Selecciona la fila de fin.`;
+          actualizarAnalisisCiclo(); tbody.rows[rowIndex].classList.add('fila-ciclo');
+      } else {
           cicloFin = rowIndex;
-          if (cicloInicio > cicloFin) { // Asegurarse que inicio <= fin
-              [cicloInicio, cicloFin] = [cicloFin, cicloInicio];
-          }
-          proximoClickDefine = 'inicio';
-          modoSeleccionRangoCiclo = false; // Salir del modo
+          if (cicloInicio > cicloFin) { [cicloInicio, cicloFin] = [cicloFin, cicloInicio]; }
+          proximoClickDefine = 'inicio'; modoSeleccionRangoCiclo = false;
           tbody.classList.remove('modo-seleccion-ciclo');
-          btnDefinirCiclo.textContent = 'Definir Rango de Ciclo';
-          btnDefinirCiclo.classList.replace('btn-danger', 'btn-warning');
-          actualizarAnalisisCiclo();
-          saveHistory();
+          btnDefinirCiclo.textContent = 'Definir Rango de Ciclo'; btnDefinirCiclo.classList.replace('btn-danger', 'btn-warning');
+          actualizarAnalisisCiclo(); saveHistory();
       }
       return;
   }
-
-  // Lógica normal de click en celdas de actividad
-  if (td.cellIndex === 0) return; // Ignorar clics en minutos si no estamos en modo selección
+  if (td.cellIndex === 0) return;
   if(td.dataset.blockId){ openModalForBlock(td.dataset.blockId); return; }
   if(!accionActual){ alert('Selecciona una acción'); return; }
   const filaIndex = Array.from(tbody.rows).indexOf(td.parentElement);
@@ -488,7 +461,7 @@ tabla.addEventListener('click', (ev)=>{
   pintarBloque(filaIndex, td.cellIndex, accionActual);
 });
 tabla.addEventListener('mousedown', (e)=>{ const td = e.target; if(td.tagName==='TD' && td.classList.contains('drag-handle') && td.dataset.blockId){ dragState = { bid: td.dataset.blockId, startY: e.clientY, hasMoved: false }; document.body.style.cursor = 'grabbing'; }});
-document.addEventListener('mousemove', (e) => { if (dragState && Math.abs(e.clientY - dragState.startY) > 5) { dragState.hasMoved = true; }});
+document.addEventListener('mousemove', (e) => { if (dragState && Math.abs(e.clientY - e.pageY) > 5) { dragState.hasMoved = true; }});
 document.addEventListener('mouseup', (e) => {
   if (dragState && dragState.hasMoved) {
     const targetCell = document.elementFromPoint(e.clientX, e.clientY);
@@ -499,7 +472,7 @@ document.addEventListener('mouseup', (e) => {
       const blockCels = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`));
       if (blockCels.length > 0) {
         const aName = blockCels[0].dataset.accion;
-        const actionObj = acciones.find(a => a.nombre === aName) || { nombre: aName, duracion: blockCels.length, color: blockCels[0].dataset.color };
+        const actionObj = acciones.find(a => a.nombre === aName) || { nombre: aName, duracion: (blockCels.length/60), color: blockCels[0].dataset.color };
         blockCels.forEach(c => limpiarCelda(c));
         pintarBloque(targetRowIndex, targetColIndex, actionObj);
       }
@@ -513,50 +486,25 @@ tabla.addEventListener('mousemove', (e)=>{ const el = e.target; if(el.tagName===
 tabla.addEventListener('click', (e)=>{ const td = e.target; if(td.tagName==='TD'){ lastSelectedCell = td; lastClickedBlockId = td.dataset.blockId || null; }});
 document.addEventListener('keydown', (e)=>{ const targetTagName = e.target.tagName.toLowerCase(); if (targetTagName === 'input') return; if(e.key==='Delete' || e.key === 'Backspace'){ if(lastClickedBlockId){ document.querySelectorAll(`td[data-block-id="${lastClickedBlockId}"]`).forEach(c=>limpiarCelda(c)); actualizarAnalisisCiclo(); saveHistory(); } }});
 
-// Eventos de Modales y el resto de la UI
-function openModalForBlock(bid){ editingBlockId = bid; const cells = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`)); if(!cells.length) return; const midCell = cells[Math.floor(cells.length/2)]; modalNombre.value = midCell.dataset.accion || ''; modalColor.value = midCell.dataset.color || '#0d6efd'; modalDuracion.value = cells.length; modal.style.display = 'flex'; modalNombre.focus(); }
+function openModalForBlock(bid){ editingBlockId = bid; const cells = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`)); if(!cells.length) return; const midCell = cells[Math.floor(cells.length/2)]; modalNombre.value = midCell.dataset.accion || ''; modalColor.value = midCell.dataset.color || '#0d6efd'; modalDuracion.value = (cells.length / 60).toFixed(2); modal.style.display = 'flex'; modalNombre.focus(); }
 modalCancelar.onclick = ()=>{ modal.style.display='none'; editingBlockId=null }
-modalGuardar.onclick = ()=>{ const nuevoNombre = modalNombre.value.trim(); if(!editingBlockId){ modal.style.display='none'; return; } const cells = Array.from(document.querySelectorAll(`td[data-block-id="${editingBlockId}"]`)); if(!cells.length){ modal.style.display='none'; editingBlockId=null; return; } const nuevaDuracion = parseInt(modalDuracion.value) || cells.length; const nuevoColor = modalColor.value; const startIndex = Array.from(tbody.rows).indexOf(cells[0].parentElement); const colIndex = cells[0].cellIndex; cells.forEach(c => limpiarCelda(c)); const actionName = nuevoNombre || 'Accion'; const actionObj = acciones.find(a=>a.nombre===actionName); let accObj; if(actionObj){ actionObj.color = nuevoColor; actionObj.duracion = nuevaDuracion; accObj = actionObj; } else { accObj = {nombre:actionName, duracion:nuevaDuracion, color:nuevoColor}; acciones.push(accObj); renderAcciones(); } pintarBloque(startIndex, colIndex, accObj); modal.style.display='none'; editingBlockId=null; };
+modalGuardar.onclick = ()=>{ const nuevoNombre = modalNombre.value.trim(); if(!editingBlockId){ modal.style.display='none'; return; } const cells = Array.from(document.querySelectorAll(`td[data-block-id="${editingBlockId}"]`)); if(!cells.length){ modal.style.display='none'; editingBlockId=null; return; } const nuevaDuracion = parseFloat(modalDuracion.value) || (cells.length / 60); const nuevoColor = modalColor.value; const startIndex = Array.from(tbody.rows).indexOf(cells[0].parentElement); const colIndex = cells[0].cellIndex; cells.forEach(c => limpiarCelda(c)); const actionName = nuevoNombre || 'Accion'; const actionObj = acciones.find(a=>a.nombre===actionName); let accObj; if(actionObj){ actionObj.color = nuevoColor; actionObj.duracion = nuevaDuracion; accObj = actionObj; } else { accObj = {nombre:actionName, duracion:nuevaDuracion, color:nuevoColor}; acciones.push(accObj); renderAcciones(); } pintarBloque(startIndex, colIndex, accObj); modal.style.display='none'; editingBlockId=null; };
 modalBorrar.onclick = ()=>{ if(!editingBlockId || !confirm('¿Borrar este bloque?')) return; document.querySelectorAll(`td[data-block-id="${editingBlockId}"]`).forEach(c => limpiarCelda(c)); actualizarAnalisisCiclo(); modal.style.display='none'; editingBlockId=null; saveHistory(); }
-btnConfigurarCostos.onclick = () => {
-    costosFormContainer.innerHTML = '';
-    const tieneOperarios = columnas.some(c => c.tipo === 'operario');
-    if (tieneOperarios) {
-        costosFormContainer.innerHTML += `<label class="small">Costo/hr General de Operarios (S/)</label><input type="number" data-col-id="operario_general" value="${costos.operario_general?.activa || ''}">`;
-    }
-    columnas.filter(c => c.tipo === 'maquina').forEach(col => {
-        costosFormContainer.innerHTML += `<div class="divider"></div><label class="small"><b>${col.nombre}</b> Costo/hr Activa (S/)</label><input type="number" data-col-id="${col.id}" data-costo-tipo="activa" value="${costos[col.id]?.activa || ''}"><label class="small">${col.nombre} Costo/hr Ociosa (S/)</label><input type="number" data-col-id="${col.id}" data-costo-tipo="ociosa" value="${costos[col.id]?.ociosa || ''}">`;
-    });
-    modalCostos.style.display = 'flex';
-};
-costosGuardar.onclick = () => {
-    costosFormContainer.querySelectorAll('input').forEach(input => {
-        const colId = input.dataset.colId;
-        const costoTipo = input.dataset.costoTipo || 'activa';
-        if (!costos[colId]) costos[colId] = {};
-        costos[colId][costoTipo] = parseFloat(input.value) || 0;
-    });
-    if (costos.operario_general) {
-        columnas.filter(c => c.tipo === 'operario').forEach(op => { if (!costos[op.id]) costos[op.id] = {}; costos[op.id].activa = costos.operario_general.activa; });
-    }
-    modalCostos.style.display = 'none';
-    actualizarAnalisisCiclo();
-    saveHistory();
-};
+btnConfigurarCostos.onclick = () => { costosFormContainer.innerHTML = ''; const tieneOperarios = columnas.some(c => c.tipo === 'operario'); if (tieneOperarios) { costosFormContainer.innerHTML += `<label class="small">Costo/hr General de Operarios (S/)</label><input type="number" data-col-id="operario_general" value="${costos.operario_general?.activa || ''}">`; } columnas.filter(c => c.tipo === 'maquina').forEach(col => { costosFormContainer.innerHTML += `<div class="divider"></div><label class="small"><b>${col.nombre}</b> Costo/hr Activa (S/)</label><input type="number" data-col-id="${col.id}" data-costo-tipo="activa" value="${costos[col.id]?.activa || ''}"><label class="small">${col.nombre} Costo/hr Ociosa (S/)</label><input type="number" data-col-id="${col.id}" data-costo-tipo="ociosa" value="${costos[col.id]?.ociosa || ''}">`; }); modalCostos.style.display = 'flex'; };
+costosGuardar.onclick = () => { costosFormContainer.querySelectorAll('input').forEach(input => { const colId = input.dataset.colId; const costoTipo = input.dataset.costoTipo || 'activa'; if (!costos[colId]) costos[colId] = {}; costos[colId][costoTipo] = parseFloat(input.value) || 0; }); if (costos.operario_general) { columnas.filter(c => c.tipo === 'operario').forEach(op => { if (!costos[op.id]) costos[op.id] = {}; costos[op.id].activa = costos.operario_general.activa; }); } modalCostos.style.display = 'none'; actualizarAnalisisCiclo(); saveHistory(); };
 costosCancelar.onclick = () => { modalCostos.style.display = 'none'; };
 btnUndo.onclick = ()=>undo(); btnRedo.onclick = ()=>redo();
 btnCopy.onclick = ()=>{ if(lastClickedBlockId){ clipboardBlock = captureBlock(lastClickedBlockId); alert('Bloque copiado.'); } else alert('Haz click en un bloque para copiarlo.'); };
 btnPaste.onclick = ()=>{ if(!clipboardBlock) return alert('No hay nada en el portapapeles.'); const target = lastSelectedCell || tbody.rows[0].cells[1]; if(!target) return; const filaIndex = Array.from(tbody.rows).indexOf(target.parentElement); pintarBlockFromData(filaIndex, target.cellIndex, clipboardBlock); saveHistory(); };
-btnSplit.onclick = ()=>{ if(!lastClickedBlockId) return alert('Haz click en un bloque para dividirlo.'); const bid = lastClickedBlockId; const cells = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`)); if(cells.length<=1) return alert('El bloque es pequeño.'); const midIndex = Math.floor(cells.length/2); const first = cells.slice(0,midIndex); const second = cells.slice(midIndex); const id1 = uid(), id2 = uid(); first.forEach(c=>{ c.dataset.blockId = id1; }); second.forEach(c=>{ c.dataset.blockId = id2; }); aplicarBordes(); saveHistory(); }
-function captureBlock(bid){ const cells = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`)); if(!cells.length) return null; return { nombre: cells[0].dataset.accion, color: cells[0].dataset.color || cells[0].style.backgroundColor, duracion: cells.length }; }
-function pintarBlockFromData(startRow, colIndex, data){ const filas = Array.from(tbody.rows); const dur = data.duracion || 1; const blockId = uid(); for(let i=0;i<dur;i++){ const r = startRow + i; if(r>=filas.length) break; const td = filas[r].cells[colIndex]; td.className=''; td.style.background = data.color; td.style.color = getContrastingTextColor(data.color); td.dataset.accion = data.nombre; td.dataset.blockId = blockId; td.dataset.color = data.color; td.textContent = (i===Math.floor((dur-1)/2))?data.nombre:''; } aplicarBordes(); actualizarAnalisisGeneral(); }
-btnGuardar.onclick = ()=>{ const state = getState(); const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state,null,2)); const a = document.createElement('a'); a.href = dataStr; a.download = 'diagrama.json'; document.body.appendChild(a); a.click(); a.remove(); }
+function captureBlock(bid){ const cells = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`)); if(!cells.length) return null; return { nombre: cells[0].dataset.accion, color: cells[0].dataset.color, duracion: cells.length / 60 }; }
+function pintarBlockFromData(startRow, colIndex, data){ const filas = Array.from(tbody.rows); const dur = Math.round(data.duracion * 60); const blockId = uid(); for(let i=0;i<dur;i++){ const r = startRow + i; if(r>=filas.length) break; const td = filas[r].cells[colIndex]; td.className=''; td.style.background = data.color; td.style.color = getContrastingTextColor(data.color); td.dataset.accion = data.nombre; td.dataset.blockId = blockId; td.dataset.color = data.color; if (dur >= 5 && i === Math.floor((dur-1)/2)) td.textContent = data.nombre; } aplicarBordes(); actualizarAnalisisGeneral(); }
+btnGuardar.onclick = ()=>{ const state = getState(); const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state,null,2)); const a = document.createElement('a'); a.href = dataStr; a.download = 'diagrama.json'; a.click(); }
 btnCargar.onclick = ()=> fileInput.click();
 fileInput.onchange = e=>{ const f = e.target.files[0]; if(!f) return; const reader = new FileReader(); reader.onload = ()=> { try{ const state = JSON.parse(reader.result); loadState(state); saveHistory(); }catch(err){ alert('Error al cargar.'); } }; reader.readAsText(f); }
-btnExportPNG.onclick = () => { const tablaParaExportar = document.getElementById('tabla-actividades'); tablaParaExportar.style.outline = '2px solid var(--accent)'; html2canvas(tablaParaExportar, { useCORS: true, logging: false, onclone: (doc) => { doc.getElementById('tabla-actividades').style.transform = ''; } }).then(canvas => { const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = 'diagrama.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a); tablaParaExportar.style.outline = 'none'; }); };
+btnExportPNG.onclick = () => { const tablaParaExportar = document.getElementById('tabla-actividades'); tablaParaExportar.style.outline = '2px solid var(--accent)'; html2canvas(tablaParaExportar, { useCORS: true, logging: false, onclone: (doc) => { doc.getElementById('tabla-actividades').style.transform = ''; } }).then(canvas => { const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = 'diagrama.png'; a.click(); tablaParaExportar.style.outline = 'none'; }); };
 btnShare.onclick = () => { const state = getState(); const jsonString = JSON.stringify(state); const compressed = LZString.compressToEncodedURIComponent(jsonString); const url = location.origin + location.pathname + '#s=' + compressed; prompt('Copia este link corto y compártelo:', url); }
 btnRestore.onclick = ()=>{ const saved = localStorage.getItem('autoSave'); if(!saved) return alert('No hay datos guardados.'); try{ const state = JSON.parse(saved); loadState(state); saveHistory(); }catch(e){ alert('No se pudo restaurar.'); } };
-btnClear.onclick = ()=>{ if(confirm('¿Seguro que quieres borrar todo?')){ primerEncabezado = 'Minuto'; columnas=[]; acciones=[]; costos={}; cicloInicio=null; cicloFin=null; agregarColumna('operario'); generarTabla(); renderAcciones(); localStorage.removeItem('autoSave'); saveHistory(); } }
+btnClear.onclick = ()=>{ if(confirm('¿Seguro que quieres borrar todo?')){ primerEncabezado = 'Tiempo'; columnas=[]; acciones=[]; costos={}; cicloInicio=null; cicloFin=null; agregarColumna('operario'); generarTabla(); renderAcciones(); localStorage.removeItem('autoSave'); saveHistory(); } }
 zoomRange.oninput = ()=> { tabla.style.transform = `scale(${zoomRange.value/100})`; }
 document.addEventListener('keydown', (e)=>{ const targetTagName = e.target.tagName.toLowerCase(); if (targetTagName === 'input') return; if(e.ctrlKey && e.key==='z'){ e.preventDefault(); undo(); } if(e.ctrlKey && e.key==='y'){ e.preventDefault(); redo(); } if(e.ctrlKey && e.key==='c'){ e.preventDefault(); if(lastClickedBlockId) clipboardBlock = captureBlock(lastClickedBlockId); } if(e.ctrlKey && e.key==='v'){ e.preventDefault(); btnPaste.click(); } if(e.key==='Delete' || e.key === 'Backspace'){ if(lastClickedBlockId){ document.querySelectorAll(`td[data-block-id="${lastClickedBlockId}"]`).forEach(c=>limpiarCelda(c)); actualizarAnalisisCiclo(); saveHistory(); } }});
 
@@ -574,7 +522,7 @@ function init() {
     try { const s = JSON.parse(saved); loadState(s, true); } catch (e) { generarTabla(); }
   } else {
     columnas.push({id: `col_${uid()}`, nombre: 'Operario 1', tipo: 'operario'});
-    acciones = [ { nombre: 'Trabajo', duracion: 5, color: '#0d6efd' }, { nombre: 'Espera', duracion: 3, color: '#ffc107' } ];
+    acciones = [ { nombre: 'Cargar Pieza', duracion: 0.25, color: '#0d6efd' }, { nombre: 'Espera', duracion: 1.5, color: '#ffc107' }, { nombre: 'Descargar Pieza', duracion: 0.2, color: '#0dcaf0' } ];
     renderAcciones();
     generarTabla();
   }
