@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Diagrama Hombre-Máquina — Avanzado</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
 <style>
   :root{
     --bg:#f6f7f9; --card:#fff; --muted:#6c757d;
@@ -410,7 +411,6 @@ tabla.addEventListener('mousemove', (e)=>{
   }
 });
 
-// ✅ CORREGIDO: Lógica de Drag & Drop para diferenciar clic de arrastre
 tabla.addEventListener('mousedown', (e)=>{
   const td = e.target;
   if(td.tagName==='TD' && td.classList.contains('drag-handle') && td.dataset.blockId){
@@ -432,37 +432,33 @@ document.addEventListener('mousemove', (e) => {
   }
 });
 
-document.addEventListener('mouseup',(e)=>{
-  if(dragState){
-    if (dragState.hasMoved) {
-      const tableRect = tabla.getBoundingClientRect();
-      if(e.clientY >= tableRect.top && e.clientY <= tableRect.bottom){
-        const rel = e.clientY - tableRect.top;
-        const approxRow = Math.floor(rel / (tableRect.height / tbody.rows.length));
-        const targetRow = Math.max(0, Math.min(tbody.rows.length - 1, approxRow));
-        
-        const { bid, colIndex } = dragState;
-        const blockCels = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`));
-        
-        if(blockCels.length > 0){
-          const aName = blockCels[0].dataset.accion;
-          const actionObj = acciones.find(a=>a.nombre === aName) || {
-            nombre: aName,
-            duracion: blockCels.length,
-            color: blockCels[0].dataset.color || blockCels[0].style.backgroundColor,
-          };
-          
-          blockCels.forEach(c => limpiarCelda(c));
-          pintarBloque(targetRow, colIndex, actionObj);
-        }
+document.addEventListener('mouseup', (e) => {
+  if (dragState && dragState.hasMoved) {
+    const targetCell = document.elementFromPoint(e.clientX, e.clientY);
+
+    if (targetCell && targetCell.tagName === 'TD' && targetCell.parentElement.parentElement.tagName === 'TBODY' && targetCell.cellIndex > 0) {
+      const targetRowIndex = Array.from(tbody.rows).indexOf(targetCell.parentElement);
+      const targetColIndex = targetCell.cellIndex;
+      const { bid } = dragState;
+      const blockCels = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`));
+
+      if (blockCels.length > 0) {
+        const aName = blockCels[0].dataset.accion;
+        const actionObj = acciones.find(a => a.nombre === aName) || {
+          nombre: aName,
+          duracion: blockCels.length,
+          color: blockCels[0].dataset.color || blockCels[0].style.backgroundColor,
+        };
+
+        blockCels.forEach(c => limpiarCelda(c));
+        pintarBloque(targetRowIndex, targetColIndex, actionObj);
       }
     }
-    dragState = null;
-    document.body.style.cursor = '';
   }
+  dragState = null;
+  document.body.style.cursor = '';
 });
 
-// ✅ NUEVO: Event listener para hacer los encabezados editables
 thead.addEventListener('click', (e) => {
   const th = e.target;
   if (th.tagName !== 'TH') return;
@@ -475,10 +471,8 @@ thead.addEventListener('click', (e) => {
     th.textContent = nombreRecortado;
 
     if (th.cellIndex === 0) {
-      // Es la primera columna (ej. "Minuto")
       primerEncabezado = nombreRecortado;
     } else {
-      // Es una de las otras columnas (Hombre, M1, etc.)
       columnas[th.cellIndex - 1] = nombreRecortado;
       actualizarAnalisis();
     }
@@ -685,11 +679,12 @@ zoomRange.oninput = ()=> {
 }
 
 /* ---------- share link ---------- */
-btnShare.onclick = ()=>{
+btnShare.onclick = () => {
   const state = getState();
-  const encoded = encodeURIComponent(JSON.stringify(state));
-  const url = location.origin + location.pathname + '#state=' + encoded;
-  prompt('Copia este link para compartir:', url);
+  const jsonString = JSON.stringify(state);
+  const compressed = LZString.compressToEncodedURIComponent(jsonString);
+  const url = location.origin + location.pathname + '#s=' + compressed;
+  prompt('Copia este link corto y compártelo:', url);
 }
 
 /* ---------- autosave restore / clear ---------- */
@@ -825,7 +820,6 @@ function stringToColor(str){
 }
 
 /* ---------- keyboard shortcuts ---------- */
-// ✅ CORREGIDO: El atajo de teclado no interfiere con los campos de texto
 let lastClickedBlockId = null;
 let lastSelectedCell = null;
 document.addEventListener('keydown', (e)=>{
@@ -851,27 +845,36 @@ tabla.addEventListener('click', (e)=>{
 });
 
 /* ---------- initial load & hash support ---------- */
-function init(){
+function init() {
   btnGenerar.onclick = generarTabla;
 
-  if(location.hash.startsWith('#state=')){
-    try{
-      const json = decodeURIComponent(location.hash.replace('#state=',''));
+  try {
+    if (location.hash.startsWith('#s=')) { // Chequea el nuevo formato comprimido
+      const compressed = location.hash.replace('#s=', '');
+      const jsonString = LZString.decompressFromEncodedURIComponent(compressed);
+      const state = JSON.parse(jsonString);
+      loadState(state);
+      return;
+    } else if (location.hash.startsWith('#state=')) { // Mantiene compatibilidad con el formato antiguo
+      const json = decodeURIComponent(location.hash.replace('#state=', ''));
       const state = JSON.parse(json);
       loadState(state);
       return;
-    }catch(e){ console.warn('No se pudo cargar el estado desde el hash.') }
+    }
+  } catch (e) {
+    console.warn('No se pudo cargar el estado desde el hash.', e);
   }
-  // default actions
+
+  // Carga por defecto o desde el guardado local
   acciones = [
-    {nombre:'Trabajo', duracion:5, color:'#0d6efd'},
-    {nombre:'Espera', duracion:3, color:'#ffc107'}
+    { nombre: 'Trabajo', duracion: 5, color: '#0d6efd' },
+    { nombre: 'Espera', duracion: 3, color: '#ffc107' }
   ];
   renderAcciones();
-  
+
   const saved = localStorage.getItem('autoSave');
-  if(saved){
-    try{ const s = JSON.parse(saved); loadState(s, true); }catch(e){ generarTabla(); }
+  if (saved) {
+    try { const s = JSON.parse(saved); loadState(s, true); } catch (e) { generarTabla(); }
   } else {
     generarTabla();
   }
