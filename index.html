@@ -9,7 +9,7 @@
 <style>
   :root{
     --bg:#f6f7f9; --card:#fff; --muted:#6c757d;
-    --accent:#0d6efd; --danger:#dc3545; --success:#198754;
+    --accent:#0d6efd; --danger:#dc3545; --success:#198754; --warning: #ffc107;
     --border:#dee2e6;
   }
   html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial; background:var(--bg); color:#222}
@@ -24,6 +24,7 @@
   .btn-primary{background:var(--accent)}
   .btn-danger{background:var(--danger)}
   .btn-success{background:var(--success)}
+  .btn-warning{background:var(--warning); color: #000;}
   .btn-secondary{background:var(--muted); color:#fff}
   #acciones-disponibles{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
   .accion-wrapper{position:relative;display:inline-block;}
@@ -37,8 +38,10 @@
   thead th{position:sticky;top:0;background:#f1f3f5;padding:8px;border:1px solid var(--border); cursor:pointer;}
   td,th{min-width:72px;padding:6px;text-align:center;border:1px solid var(--border)}
   tbody td:first-child{background:#fafafa;font-weight:600}
+  tbody.modo-seleccion-ciclo td:first-child { cursor: pointer; background-color: #fffbe6 !important; }
+  .fila-ciclo { background-color: rgba(25,135,84,0.07); }
+
   .celda-inactiva{background-image:repeating-linear-gradient(45deg, rgba(220,53,69,0.06), rgba(220,53,69,0.06) 8px, transparent 8px, transparent 16px)}
-  .bloque-ciclo-seleccionado { box-shadow: inset 0 0 0 3px var(--success); }
 
   #tooltip{position:fixed;background:#222;color:#fff;padding:6px 8px;border-radius:6px;pointer-events:none;opacity:0;transition:opacity .12s;z-index:2000;font-size:13px}
   .modal{position:fixed;left:0;top:0;width:100%;height:100%;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:2000; overflow-y: auto;}
@@ -88,9 +91,9 @@
         <h4>Análisis de Ciclo</h4>
         <div class="controls">
             <button id="btnConfigurarCostos" class="btn-secondary">⚙️ Configurar Costos</button>
-            <button id="btnDefinirCiclo" class="btn-success">Definir Ciclo</button>
+            <button id="btnDefinirCiclo" class="btn-warning">Definir Rango de Ciclo</button>
         </div>
-        <div class="small" style="margin-top:4px;">Selecciona los bloques que componen 1 ciclo productivo.</div>
+        <div class="small" style="margin-top:4px;">Haz clic en el botón y luego selecciona las filas de inicio y fin en la tabla.</div>
 
         <div class="divider"></div>
 
@@ -140,7 +143,7 @@
         <div id="analisis-general-container"></div>
         <div class="divider"></div>
         <h4>Análisis de Ciclo por Unidad</h4>
-        <div id="analisis-ciclo-container">Presiona "Definir Ciclo" y selecciona los bloques que componen una unidad para ver los cálculos.</div>
+        <div id="analisis-ciclo-container">Define un rango de ciclo para ver los cálculos.</div>
       </div>
     </div>
   </div>
@@ -192,33 +195,9 @@ const inputDuracionAccion = document.getElementById('duracionAccion');
 const inputColorAccion = document.getElementById('colorAccion');
 const btnConfigurarCostos = document.getElementById('btnConfigurarCostos');
 const btnDefinirCiclo = document.getElementById('btnDefinirCiclo');
-const btnGuardar = document.getElementById('btnGuardar');
-const btnCargar = document.getElementById('btnCargar');
-const fileInput = document.getElementById('fileInput');
-const btnExportPNG = document.getElementById('btnExportPNG');
-const btnUndo = document.getElementById('btnUndo');
-const btnRedo = document.getElementById('btnRedo');
-const btnCopy = document.getElementById('btnCopy');
-const btnPaste = document.getElementById('btnPaste');
-const btnSplit = document.getElementById('btnSplit');
-const zoomRange = document.getElementById('zoomRange');
-const btnShare = document.getElementById('btnShare');
-const btnRestore = document.getElementById('btnRestore');
-const btnClear = document.getElementById('btnClear');
-const modal = document.getElementById('modalEditar');
-const modalNombre = document.getElementById('modalNombre');
-const modalDuracion = document.getElementById('modalDuracion');
-const modalColor = document.getElementById('modalColor');
-const modalGuardar = document.getElementById('modalGuardar');
-const modalCancelar = document.getElementById('modalCancelar');
-const modalBorrar = document.getElementById('modalBorrar');
-const modalCostos = document.getElementById('modalCostos');
-const costosFormContainer = document.getElementById('costos-form-container');
-const costosGuardar = document.getElementById('costosGuardar');
-const costosCancelar = document.getElementById('costosCancelar');
-const tooltip = document.getElementById('tooltip');
-const analisisGeneralContainer = document.getElementById('analisis-general-container');
-const analisisCicloContainer = document.getElementById('analisis-ciclo-container');
+// ... el resto de los selectores de elementos
+const btnGuardar = document.getElementById('btnGuardar'); const btnCargar = document.getElementById('btnCargar'); const fileInput = document.getElementById('fileInput'); const btnExportPNG = document.getElementById('btnExportPNG'); const btnUndo = document.getElementById('btnUndo'); const btnRedo = document.getElementById('btnRedo'); const btnCopy = document.getElementById('btnCopy'); const btnPaste = document.getElementById('btnPaste'); const btnSplit = document.getElementById('btnSplit'); const zoomRange = document.getElementById('zoomRange'); const btnShare = document.getElementById('btnShare'); const btnRestore = document.getElementById('btnRestore'); const btnClear = document.getElementById('btnClear'); const modal = document.getElementById('modalEditar'); const modalNombre = document.getElementById('modalNombre'); const modalDuracion = document.getElementById('modalDuracion'); const modalColor = document.getElementById('modalColor'); const modalGuardar = document.getElementById('modalGuardar'); const modalCancelar = document.getElementById('modalCancelar'); const modalBorrar = document.getElementById('modalBorrar'); const modalCostos = document.getElementById('modalCostos'); const costosFormContainer = document.getElementById('costos-form-container'); const costosGuardar = document.getElementById('costosGuardar'); const costosCancelar = document.getElementById('costosCancelar'); const tooltip = document.getElementById('tooltip'); const analisisGeneralContainer = document.getElementById('analisis-general-container'); const analisisCicloContainer = document.getElementById('analisis-ciclo-container');
+
 
 // Datos de la aplicación
 let primerEncabezado = 'Minuto';
@@ -226,8 +205,13 @@ let columnas = []; // Array de objetos: {id, nombre, tipo: 'operario'|'maquina'}
 let acciones = []; 
 let costos = {}; // { col_id: { activa: 50, ociosa: 10 } }
 let accionActual = null;
-let modoSeleccionCiclo = false;
-let bloquesCiclo = new Set();
+
+// JS: Nuevas variables para el rango del ciclo
+let modoSeleccionRangoCiclo = false;
+let cicloInicio = null;
+let cicloFin = null;
+let proximoClickDefine = 'inicio';
+
 let historyStack = [];
 let redoStack = [];
 const HISTORY_LIMIT = 60;
@@ -248,14 +232,15 @@ function getContrastingTextColor(hex){ if(!hex) return 'white'; if(hex.startsWit
 function saveHistory(){ const snapshot = getState(); historyStack.push(JSON.stringify(snapshot)); if(historyStack.length>HISTORY_LIMIT) historyStack.shift(); redoStack = []; localStorage.setItem('autoSave', JSON.stringify(snapshot)); }
 function undo(){ if(historyStack.length<=1) return; const cur = historyStack.pop(); redoStack.push(cur); const prev = JSON.parse(historyStack[historyStack.length-1]); loadState(prev, true); }
 function redo(){ if(redoStack.length===0) return; const state = JSON.parse(redoStack.pop()); historyStack.push(JSON.stringify(state)); loadState(state, true); }
-function getState(){ const tablaData = Array.from(tbody.rows).map(tr=> Array.from(tr.cells).slice(1).map(td=>{ return td.dataset.blockId ? {blockId: td.dataset.blockId, accion: td.dataset.accion, color: td.dataset.color} : null; })); return { primerEncabezado, columnas, acciones, costos, bloquesCiclo: [...bloquesCiclo], minutos: parseInt(minutosInput.value)||0, tablaData }; }
+function getState(){ const tablaData = Array.from(tbody.rows).map(tr=> Array.from(tr.cells).slice(1).map(td=>{ return td.dataset.blockId ? {blockId: td.dataset.blockId, accion: td.dataset.accion, color: td.dataset.color} : null; })); return { primerEncabezado, columnas, acciones, costos, cicloInicio, cicloFin, minutos: parseInt(minutosInput.value)||0, tablaData }; }
 function loadState(state, skipHistory=false){
   if(!state) return;
   primerEncabezado = state.primerEncabezado || 'Minuto';
   columnas = state.columnas || [{id: `col_${uid()}`, nombre: 'Operario 1', tipo: 'operario'}];
   acciones = state.acciones || [];
   costos = state.costos || {};
-  bloquesCiclo = new Set(state.bloquesCiclo || []);
+  cicloInicio = state.cicloInicio || null;
+  cicloFin = state.cicloFin || null;
   minutosInput.value = state.minutos || 60;
   
   generarTabla(true); 
@@ -273,7 +258,6 @@ function loadState(state, skipHistory=false){
         });
       }
     });
-
     const groups = {};
     tbody.querySelectorAll('td[data-block-id]').forEach(td=>{ const id = td.dataset.blockId; if(!groups[id]) groups[id]=[]; groups[id].push(td); });
     Object.values(groups).forEach(g=>{ g.sort((a,b)=>a.parentElement.rowIndex - b.parentElement.rowIndex); const mid = Math.floor((g.length-1)/2); g.forEach((c,i)=> { c.textContent = (i===mid)? c.dataset.accion : ''; if (i===mid) c.classList.add('drag-handle'); }); });
@@ -282,7 +266,6 @@ function loadState(state, skipHistory=false){
   aplicarBordes();
   actualizarAnalisisGeneral();
   actualizarAnalisisCiclo();
-  bloquesCiclo.forEach(bid => document.querySelectorAll(`td[data-block-id="${bid}"]`).forEach(td => td.classList.add('bloque-ciclo-seleccionado')));
   if(!skipHistory) saveHistory();
 }
 
@@ -299,6 +282,7 @@ function generarTabla(isLoadingState = false){
   for(let i=1;i<=minutos;i++){ const tr = document.createElement('tr'); tr.innerHTML = `<td>${i}</td>` + columnas.map(()=>`<td class="celda-inactiva"></td>`).join(''); tbody.appendChild(tr); }
   aplicarBordes();
   actualizarAnalisisGeneral();
+  actualizarAnalisisCiclo(); // Para redibujar el resaltado
   if (!isLoadingState) { saveHistory(); }
 }
 function pintarBloque(startRowIndex, colIndex, acc){
@@ -326,7 +310,7 @@ function limpiarCelda(celda){
     document.querySelectorAll(`td[data-block-id="${bid}"]`).forEach(c=>{
       c.className='celda-inactiva'; c.style.background=''; c.style.color=''; c.textContent=''; 
       c.removeAttribute('data-accion'); c.removeAttribute('data-block-id'); c.removeAttribute('data-color'); 
-      c.classList.remove('drag-handle', 'bloque-ciclo-seleccionado');
+      c.classList.remove('drag-handle');
     });
   }
   aplicarBordes();
@@ -367,49 +351,60 @@ function actualizarAnalisisGeneral(){
     analisisGeneralContainer.appendChild(p);
   });
 }
+// JS: Función de ANÁLISIS DE CICLO COMPLETAMENTE REESCRITA
 function actualizarAnalisisCiclo() {
-    if (bloquesCiclo.size === 0) {
-        analisisCicloContainer.innerHTML = 'Presiona "Definir Ciclo" y selecciona los bloques que componen una unidad para ver los cálculos.';
+    // Primero, limpiar cualquier resaltado anterior
+    tbody.querySelectorAll('.fila-ciclo').forEach(row => row.classList.remove('fila-ciclo'));
+
+    if (cicloInicio === null || cicloFin === null) {
+        analisisCicloContainer.innerHTML = 'Define un rango de ciclo para ver los cálculos.';
         return;
     }
 
-    let tiempoTotal = 0;
-    let costoTotal = 0;
-
-    bloquesCiclo.forEach(bid => {
-        const celdas = document.querySelectorAll(`td[data-block-id="${bid}"]`);
-        if (celdas.length === 0) return;
-
-        const duracion = celdas.length;
-        const colIndex = celdas[0].cellIndex;
-        const accionNombre = celdas[0].dataset.accion.toLowerCase();
-        const columna = columnas[colIndex - 1];
-
-        if (!columna) return;
-        
-        tiempoTotal += duracion;
-
-        const costoHora = costos[columna.id] || {};
-        let tarifaPorHora = 0;
-
-        if (columna.tipo === 'operario') {
-            tarifaPorHora = costoHora.activa || 0;
-        } else if (columna.tipo === 'maquina') {
-            tarifaPorHora = accionNombre.includes('espera') ? (costoHora.ociosa || 0) : (costoHora.activa || 0);
+    // Resaltar las filas del ciclo actual
+    for (let i = cicloInicio; i <= cicloFin; i++) {
+        if (tbody.rows[i]) {
+            tbody.rows[i].classList.add('fila-ciclo');
         }
-        
-        const costoBloque = (duracion / 60) * tarifaPorHora;
-        costoTotal += costoBloque;
-    });
+    }
 
-    const produccionPorHora = tiempoTotal > 0 ? (60 / tiempoTotal).toFixed(2) : 0;
+    let costoTotal = 0;
+    const tiempoDeCiclo = (cicloFin - cicloInicio + 1);
+
+    // Iterar por cada minuto del ciclo
+    for (let i = cicloInicio; i <= cicloFin; i++) {
+        if (!tbody.rows[i]) continue;
+        
+        // Iterar por cada columna (recurso)
+        for (let j = 0; j < columnas.length; j++) {
+            const cell = tbody.rows[i].cells[j + 1];
+            const columna = columnas[j];
+            const costoHora = costos[columna.id] || {};
+
+            let tarifaPorHora = 0;
+            const esOperario = columna.tipo === 'operario';
+            const tarifaActiva = esOperario ? (costos.operario_general?.activa || 0) : (costoHora.activa || 0);
+            const tarifaOciosa = esOperario ? tarifaActiva : (costoHora.ociosa || 0); // Operario ocioso cuesta lo mismo que activo
+
+            if (cell && cell.dataset.blockId) { // Hay una actividad en la celda
+                const esEspera = cell.dataset.accion.toLowerCase().includes('espera');
+                tarifaPorHora = esEspera ? tarifaOciosa : tarifaActiva;
+            } else { // No hay actividad, es tiempo ocioso
+                tarifaPorHora = tarifaOciosa;
+            }
+            costoTotal += tarifaPorHora / 60; // Costo de 1 minuto
+        }
+    }
+
+    const produccionPorHora = tiempoDeCiclo > 0 ? (60 / tiempoDeCiclo).toFixed(2) : 0;
     
     analisisCicloContainer.innerHTML = `
-        <p style="margin:4px 0;"><b>Tiempo de Ciclo:</b> ${tiempoTotal} min por unidad</p>
+        <p style="margin:4px 0;"><b>Tiempo de Ciclo:</b> ${tiempoDeCiclo} min por unidad</p>
         <p style="margin:4px 0;"><b>Producción Estimada:</b> ${produccionPorHora} unidades por hora</p>
         <p style="margin:4px 0;"><b>Costo Total por Unidad:</b> S/ ${costoTotal.toFixed(2)}</p>
     `;
 }
+
 
 /* --------------------------
   MANEJO DE EVENTOS
@@ -418,24 +413,10 @@ function actualizarAnalisisCiclo() {
 function renderAcciones(){
   accionesDiv.innerHTML='';
   acciones.forEach((acc, idx)=>{
-    const wrapper = document.createElement('div');
-    wrapper.className = 'accion-wrapper';
-    const btn = document.createElement('button');
-    btn.className = 'btn-secondary';
-    btn.style.background = acc.color;
-    btn.style.border = '2px solid transparent';
-    btn.style.color = getContrastingTextColor(acc.color);
-    btn.textContent = `${acc.nombre} (${acc.duracion}m)`;
-    btn.onclick = ()=>{ accionActual = acc; Array.from(accionesDiv.querySelectorAll('.btn-secondary')).forEach(b=>b.style.borderColor='transparent'); btn.style.borderColor='#000' }
-    btn.ondblclick = ()=>{ const nuevo = prompt('Editar nombre acción (global):', acc.nombre); if(nuevo){ acc.nombre = nuevo; renderAcciones(); } }
-    const deleteBtn = document.createElement('div');
-    deleteBtn.className = 'btn-delete-action';
-    deleteBtn.textContent = '×';
-    deleteBtn.title = 'Borrar esta acción';
-    deleteBtn.onclick = (e) => { e.stopPropagation(); if (confirm(`¿Seguro que quieres borrar la acción "${acc.nombre}"?`)) { document.querySelectorAll(`td[data-accion="${acc.nombre}"]`).forEach(td => limpiarCelda(td)); acciones.splice(idx, 1); renderAcciones(); saveHistory(); } };
-    wrapper.appendChild(btn);
-    wrapper.appendChild(deleteBtn);
-    accionesDiv.appendChild(wrapper);
+    const wrapper = document.createElement('div'); wrapper.className = 'accion-wrapper';
+    const btn = document.createElement('button'); btn.className = 'btn-secondary'; btn.style.background = acc.color; btn.style.border = '2px solid transparent'; btn.style.color = getContrastingTextColor(acc.color); btn.textContent = `${acc.nombre} (${acc.duracion}m)`; btn.onclick = ()=>{ accionActual = acc; Array.from(accionesDiv.querySelectorAll('.btn-secondary')).forEach(b=>b.style.borderColor='transparent'); btn.style.borderColor='#000' }; btn.ondblclick = ()=>{ const nuevo = prompt('Editar nombre acción (global):', acc.nombre); if(nuevo){ acc.nombre = nuevo; renderAcciones(); } };
+    const deleteBtn = document.createElement('div'); deleteBtn.className = 'btn-delete-action'; deleteBtn.textContent = '×'; deleteBtn.title = 'Borrar esta acción'; deleteBtn.onclick = (e) => { e.stopPropagation(); if (confirm(`¿Seguro que quieres borrar la acción "${acc.nombre}"?`)) { document.querySelectorAll(`td[data-accion="${acc.nombre}"]`).forEach(td => limpiarCelda(td)); acciones.splice(idx, 1); renderAcciones(); saveHistory(); } };
+    wrapper.appendChild(btn); wrapper.appendChild(deleteBtn); accionesDiv.appendChild(wrapper);
   });
 }
 btnCrearAccion.onclick = ()=>{ const name = inputNombreAccion.value.trim(); if(!name) return; const dur = parseInt(inputDuracionAccion.value) || 1; const color = inputColorAccion.value || '#0d6efd'; acciones.push({nombre:name,duracion:dur,color}); renderAcciones(); inputNombreAccion.value=''; inputDuracionAccion.value='1'; saveHistory(); };
@@ -448,37 +429,60 @@ function agregarColumna(tipo) {
 }
 btnAgregarOperario.onclick = () => agregarColumna('operario');
 btnAgregarMaquina.onclick = () => agregarColumna('maquina');
+
+// JS: Lógica MODIFICADA para la selección de ciclo por filas
 btnDefinirCiclo.onclick = () => {
-    modoSeleccionCiclo = !modoSeleccionCiclo;
-    btnDefinirCiclo.textContent = modoSeleccionCiclo ? 'Finalizar Selección' : 'Definir Ciclo';
-    btnDefinirCiclo.classList.toggle('btn-danger', modoSeleccionCiclo);
-    btnDefinirCiclo.classList.toggle('btn-success', !modoSeleccionCiclo);
-    if (!modoSeleccionCiclo) {
-        actualizarAnalisisCiclo();
-        saveHistory();
+    modoSeleccionRangoCiclo = !modoSeleccionRangoCiclo;
+    tbody.classList.toggle('modo-seleccion-ciclo', modoSeleccionRangoCiclo);
+    if (modoSeleccionRangoCiclo) {
+        btnDefinirCiclo.textContent = 'Cancelando Selección...';
+        btnDefinirCiclo.classList.replace('btn-warning', 'btn-danger');
+        proximoClickDefine = 'inicio';
+        cicloInicio = null;
+        cicloFin = null;
+        actualizarAnalisisCiclo(); // Limpia el análisis y resaltado
+    } else {
+        btnDefinirCiclo.textContent = 'Definir Rango de Ciclo';
+        btnDefinirCiclo.classList.replace('btn-danger', 'btn-warning');
     }
 };
 
 // Eventos de la Tabla
 tabla.addEventListener('click', (ev)=>{
   const td = ev.target;
-  if(td.tagName !== 'TD' || td.cellIndex === 0) return;
-  const blockId = td.dataset.blockId;
+  if(td.tagName !== 'TD') return;
 
-  if (modoSeleccionCiclo && blockId) {
-    if (bloquesCiclo.has(blockId)) {
-        bloquesCiclo.delete(blockId);
-        document.querySelectorAll(`td[data-block-id="${blockId}"]`).forEach(c => c.classList.remove('bloque-ciclo-seleccionado'));
-    } else {
-        bloquesCiclo.add(blockId);
-        document.querySelectorAll(`td[data-block-id="${blockId}"]`).forEach(c => c.classList.add('bloque-ciclo-seleccionado'));
-    }
-    return;
+  // Lógica de selección de rango de ciclo
+  if (modoSeleccionRangoCiclo && td.cellIndex === 0) {
+      const rowIndex = Array.from(tbody.rows).indexOf(td.parentElement);
+      if (proximoClickDefine === 'inicio') {
+          cicloInicio = rowIndex;
+          cicloFin = null;
+          proximoClickDefine = 'fin';
+          analisisCicloContainer.innerHTML = `Fila de inicio: ${cicloInicio + 1}. Selecciona la fila de fin.`;
+          actualizarAnalisisCiclo(); // Para resaltar la primera fila
+          tbody.rows[rowIndex].classList.add('fila-ciclo');
+
+      } else { // proximoClickDefine === 'fin'
+          cicloFin = rowIndex;
+          if (cicloInicio > cicloFin) { // Asegurarse que inicio <= fin
+              [cicloInicio, cicloFin] = [cicloFin, cicloInicio];
+          }
+          proximoClickDefine = 'inicio';
+          modoSeleccionRangoCiclo = false; // Salir del modo
+          tbody.classList.remove('modo-seleccion-ciclo');
+          btnDefinirCiclo.textContent = 'Definir Rango de Ciclo';
+          btnDefinirCiclo.classList.replace('btn-danger', 'btn-warning');
+          actualizarAnalisisCiclo();
+          saveHistory();
+      }
+      return;
   }
-  
-  if(blockId){ openModalForBlock(blockId); return; }
-  if(!accionActual){ alert('Selecciona una acción'); return; }
 
+  // Lógica normal de click en celdas de actividad
+  if (td.cellIndex === 0) return; // Ignorar clics en minutos si no estamos en modo selección
+  if(td.dataset.blockId){ openModalForBlock(td.dataset.blockId); return; }
+  if(!accionActual){ alert('Selecciona una acción'); return; }
   const filaIndex = Array.from(tbody.rows).indexOf(td.parentElement);
   if(filaIndex < 0) return;
   pintarBloque(filaIndex, td.cellIndex, accionActual);
@@ -504,27 +508,16 @@ document.addEventListener('mouseup', (e) => {
   dragState = null;
   document.body.style.cursor = '';
 });
-thead.addEventListener('click', (e) => {
-  const th = e.target;
-  if (th.tagName !== 'TH' || modoSeleccionCiclo) return;
-  const nuevoNombre = prompt('Editar nombre de la columna:', th.textContent);
-  if (nuevoNombre && nuevoNombre.trim() !== '') {
-    const nombreRecortado = nuevoNombre.trim();
-    th.textContent = nombreRecortado;
-    if (th.cellIndex === 0) { primerEncabezado = nombreRecortado; } 
-    else { columnas[th.cellIndex - 1].nombre = nombreRecortado; actualizarAnalisisGeneral(); }
-    saveHistory();
-  }
-});
+thead.addEventListener('click', (e) => { const th = e.target; if (th.tagName !== 'TH' || modoSeleccionRangoCiclo) return; const nuevoNombre = prompt('Editar nombre de la columna:', th.textContent); if (nuevoNombre && nuevoNombre.trim() !== '') { const nombreRecortado = nuevoNombre.trim(); th.textContent = nombreRecortado; if (th.cellIndex === 0) { primerEncabezado = nombreRecortado; } else { columnas[th.cellIndex - 1].nombre = nombreRecortado; actualizarAnalisisGeneral(); } saveHistory(); }});
 tabla.addEventListener('mousemove', (e)=>{ const el = e.target; if(el.tagName==='TD' && el.dataset.accion){ tooltip.style.left = (e.pageX+12)+'px'; tooltip.style.top = (e.pageY+12)+'px'; tooltip.innerHTML = `<b>${el.dataset.accion}</b>`; tooltip.style.opacity = 1; } else { tooltip.style.opacity = 0; }});
 tabla.addEventListener('click', (e)=>{ const td = e.target; if(td.tagName==='TD'){ lastSelectedCell = td; lastClickedBlockId = td.dataset.blockId || null; }});
+document.addEventListener('keydown', (e)=>{ const targetTagName = e.target.tagName.toLowerCase(); if (targetTagName === 'input') return; if(e.key==='Delete' || e.key === 'Backspace'){ if(lastClickedBlockId){ document.querySelectorAll(`td[data-block-id="${lastClickedBlockId}"]`).forEach(c=>limpiarCelda(c)); actualizarAnalisisCiclo(); saveHistory(); } }});
 
-// Eventos de Modales
+// Eventos de Modales y el resto de la UI
 function openModalForBlock(bid){ editingBlockId = bid; const cells = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`)); if(!cells.length) return; const midCell = cells[Math.floor(cells.length/2)]; modalNombre.value = midCell.dataset.accion || ''; modalColor.value = midCell.dataset.color || '#0d6efd'; modalDuracion.value = cells.length; modal.style.display = 'flex'; modalNombre.focus(); }
 modalCancelar.onclick = ()=>{ modal.style.display='none'; editingBlockId=null }
 modalGuardar.onclick = ()=>{ const nuevoNombre = modalNombre.value.trim(); if(!editingBlockId){ modal.style.display='none'; return; } const cells = Array.from(document.querySelectorAll(`td[data-block-id="${editingBlockId}"]`)); if(!cells.length){ modal.style.display='none'; editingBlockId=null; return; } const nuevaDuracion = parseInt(modalDuracion.value) || cells.length; const nuevoColor = modalColor.value; const startIndex = Array.from(tbody.rows).indexOf(cells[0].parentElement); const colIndex = cells[0].cellIndex; cells.forEach(c => limpiarCelda(c)); const actionName = nuevoNombre || 'Accion'; const actionObj = acciones.find(a=>a.nombre===actionName); let accObj; if(actionObj){ actionObj.color = nuevoColor; actionObj.duracion = nuevaDuracion; accObj = actionObj; } else { accObj = {nombre:actionName, duracion:nuevaDuracion, color:nuevoColor}; acciones.push(accObj); renderAcciones(); } pintarBloque(startIndex, colIndex, accObj); modal.style.display='none'; editingBlockId=null; };
-modalBorrar.onclick = ()=>{ if(!editingBlockId || !confirm('¿Borrar este bloque?')) return; document.querySelectorAll(`td[data-block-id="${editingBlockId}"]`).forEach(c => limpiarCelda(c)); bloquesCiclo.delete(editingBlockId); actualizarAnalisisCiclo(); modal.style.display='none'; editingBlockId=null; saveHistory(); }
-
+modalBorrar.onclick = ()=>{ if(!editingBlockId || !confirm('¿Borrar este bloque?')) return; document.querySelectorAll(`td[data-block-id="${editingBlockId}"]`).forEach(c => limpiarCelda(c)); actualizarAnalisisCiclo(); modal.style.display='none'; editingBlockId=null; saveHistory(); }
 btnConfigurarCostos.onclick = () => {
     costosFormContainer.innerHTML = '';
     const tieneOperarios = columnas.some(c => c.tipo === 'operario');
@@ -544,36 +537,28 @@ costosGuardar.onclick = () => {
         costos[colId][costoTipo] = parseFloat(input.value) || 0;
     });
     if (costos.operario_general) {
-        columnas.filter(c => c.tipo === 'operario').forEach(op => {
-            if (!costos[op.id]) costos[op.id] = {};
-            costos[op.id].activa = costos.operario_general.activa;
-        });
+        columnas.filter(c => c.tipo === 'operario').forEach(op => { if (!costos[op.id]) costos[op.id] = {}; costos[op.id].activa = costos.operario_general.activa; });
     }
     modalCostos.style.display = 'none';
     actualizarAnalisisCiclo();
     saveHistory();
 };
 costosCancelar.onclick = () => { modalCostos.style.display = 'none'; };
-
-// Eventos de Herramientas y Archivos
-btnUndo.onclick = ()=>undo();
-btnRedo.onclick = ()=>redo();
+btnUndo.onclick = ()=>undo(); btnRedo.onclick = ()=>redo();
 btnCopy.onclick = ()=>{ if(lastClickedBlockId){ clipboardBlock = captureBlock(lastClickedBlockId); alert('Bloque copiado.'); } else alert('Haz click en un bloque para copiarlo.'); };
 btnPaste.onclick = ()=>{ if(!clipboardBlock) return alert('No hay nada en el portapapeles.'); const target = lastSelectedCell || tbody.rows[0].cells[1]; if(!target) return; const filaIndex = Array.from(tbody.rows).indexOf(target.parentElement); pintarBlockFromData(filaIndex, target.cellIndex, clipboardBlock); saveHistory(); };
-btnSplit.onclick = ()=>{ if(!lastClickedBlockId) return alert('Haz click en un bloque para dividirlo.'); const bid = lastClickedBlockId; const cells = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`)); if(cells.length<=1) return alert('El bloque es demasiado pequeño.'); const midIndex = Math.floor(cells.length/2); const first = cells.slice(0,midIndex); const second = cells.slice(midIndex); const id1 = uid(), id2 = uid(); first.forEach(c=>{ c.dataset.blockId = id1; }); second.forEach(c=>{ c.dataset.blockId = id2; }); aplicarBordes(); saveHistory(); }
+btnSplit.onclick = ()=>{ if(!lastClickedBlockId) return alert('Haz click en un bloque para dividirlo.'); const bid = lastClickedBlockId; const cells = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`)); if(cells.length<=1) return alert('El bloque es pequeño.'); const midIndex = Math.floor(cells.length/2); const first = cells.slice(0,midIndex); const second = cells.slice(midIndex); const id1 = uid(), id2 = uid(); first.forEach(c=>{ c.dataset.blockId = id1; }); second.forEach(c=>{ c.dataset.blockId = id2; }); aplicarBordes(); saveHistory(); }
 function captureBlock(bid){ const cells = Array.from(document.querySelectorAll(`td[data-block-id="${bid}"]`)); if(!cells.length) return null; return { nombre: cells[0].dataset.accion, color: cells[0].dataset.color || cells[0].style.backgroundColor, duracion: cells.length }; }
 function pintarBlockFromData(startRow, colIndex, data){ const filas = Array.from(tbody.rows); const dur = data.duracion || 1; const blockId = uid(); for(let i=0;i<dur;i++){ const r = startRow + i; if(r>=filas.length) break; const td = filas[r].cells[colIndex]; td.className=''; td.style.background = data.color; td.style.color = getContrastingTextColor(data.color); td.dataset.accion = data.nombre; td.dataset.blockId = blockId; td.dataset.color = data.color; td.textContent = (i===Math.floor((dur-1)/2))?data.nombre:''; } aplicarBordes(); actualizarAnalisisGeneral(); }
-
 btnGuardar.onclick = ()=>{ const state = getState(); const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state,null,2)); const a = document.createElement('a'); a.href = dataStr; a.download = 'diagrama.json'; document.body.appendChild(a); a.click(); a.remove(); }
 btnCargar.onclick = ()=> fileInput.click();
 fileInput.onchange = e=>{ const f = e.target.files[0]; if(!f) return; const reader = new FileReader(); reader.onload = ()=> { try{ const state = JSON.parse(reader.result); loadState(state); saveHistory(); }catch(err){ alert('Error al cargar.'); } }; reader.readAsText(f); }
 btnExportPNG.onclick = () => { const tablaParaExportar = document.getElementById('tabla-actividades'); tablaParaExportar.style.outline = '2px solid var(--accent)'; html2canvas(tablaParaExportar, { useCORS: true, logging: false, onclone: (doc) => { doc.getElementById('tabla-actividades').style.transform = ''; } }).then(canvas => { const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = 'diagrama.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a); tablaParaExportar.style.outline = 'none'; }); };
 btnShare.onclick = () => { const state = getState(); const jsonString = JSON.stringify(state); const compressed = LZString.compressToEncodedURIComponent(jsonString); const url = location.origin + location.pathname + '#s=' + compressed; prompt('Copia este link corto y compártelo:', url); }
-
 btnRestore.onclick = ()=>{ const saved = localStorage.getItem('autoSave'); if(!saved) return alert('No hay datos guardados.'); try{ const state = JSON.parse(saved); loadState(state); saveHistory(); }catch(e){ alert('No se pudo restaurar.'); } };
-btnClear.onclick = ()=>{ if(confirm('¿Seguro que quieres borrar todo?')){ primerEncabezado = 'Minuto'; columnas=[]; acciones=[]; costos={}; bloquesCiclo.clear(); agregarColumna('operario'); generarTabla(); renderAcciones(); localStorage.removeItem('autoSave'); saveHistory(); } }
+btnClear.onclick = ()=>{ if(confirm('¿Seguro que quieres borrar todo?')){ primerEncabezado = 'Minuto'; columnas=[]; acciones=[]; costos={}; cicloInicio=null; cicloFin=null; agregarColumna('operario'); generarTabla(); renderAcciones(); localStorage.removeItem('autoSave'); saveHistory(); } }
 zoomRange.oninput = ()=> { tabla.style.transform = `scale(${zoomRange.value/100})`; }
-document.addEventListener('keydown', (e)=>{ const targetTagName = e.target.tagName.toLowerCase(); if (targetTagName === 'input') return; if(e.ctrlKey && e.key==='z'){ e.preventDefault(); undo(); } if(e.ctrlKey && e.key==='y'){ e.preventDefault(); redo(); } if(e.ctrlKey && e.key==='c'){ e.preventDefault(); if(lastClickedBlockId) clipboardBlock = captureBlock(lastClickedBlockId); } if(e.ctrlKey && e.key==='v'){ e.preventDefault(); btnPaste.click(); } if(e.key==='Delete' || e.key === 'Backspace'){ if(lastClickedBlockId){ document.querySelectorAll(`td[data-block-id="${lastClickedBlockId}"]`).forEach(c=>limpiarCelda(c)); bloquesCiclo.delete(lastClickedBlockId); actualizarAnalisisCiclo(); saveHistory(); } }});
+document.addEventListener('keydown', (e)=>{ const targetTagName = e.target.tagName.toLowerCase(); if (targetTagName === 'input') return; if(e.ctrlKey && e.key==='z'){ e.preventDefault(); undo(); } if(e.ctrlKey && e.key==='y'){ e.preventDefault(); redo(); } if(e.ctrlKey && e.key==='c'){ e.preventDefault(); if(lastClickedBlockId) clipboardBlock = captureBlock(lastClickedBlockId); } if(e.ctrlKey && e.key==='v'){ e.preventDefault(); btnPaste.click(); } if(e.key==='Delete' || e.key === 'Backspace'){ if(lastClickedBlockId){ document.querySelectorAll(`td[data-block-id="${lastClickedBlockId}"]`).forEach(c=>limpiarCelda(c)); actualizarAnalisisCiclo(); saveHistory(); } }});
 
 /* --------------------------
   INICIALIZACIÓN
